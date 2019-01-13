@@ -1,0 +1,160 @@
+Notes 2019-01-09
+
+SSIM:
+- image_diff.py
+
+Arya results:
+- SSIM increases (good) as resolution decreases
+ - perhaps due to 11x11 window, which does not encapsulate a whole character
+- zoom matters a lot
+ - match pixel placement (in evaluation) as accurately as possible
+ - SSIM: 0.10900802597770408 without matching zoom
+ - SSIM: 0.1038874548691809 for a *totally different image*
+ - SSIM: 0.35508744840872164 with matching zoom
+- matching brightness / contrast matters a little bit
+ - SSIM: 0.35508744840872164 without matching levels
+ - SSIM: 0.40035811574407315 with matching levels
+
+Typed character results:
+- 0 and 8: SSIM: 0.6497579054533621
+- 0 and #: SSIM: 0.23633129442480139
+- seems to work fairly well
+
+MNIST annoy ANNs:
+- distance correlates well with SSIM
+- but MUCH faster. Time for entire batch of 60000 images to be compared:
+    - skSSIM: 17.00658041199995
+    - annDist: 0.0645328509999672
+    - 263 times faster!
+    - see charts
+    - not sure if this is an accurate comparison: redo later with real-world scenario
+
+ANN provides good approximation of SSIM, itself a good approximation of MOS (mean opinion score)
+
+
+2019-01-10
+
+blend_modes is very slow for compositing
+- Instead, let's represent white as 0 and black as 255. (inverted)
+- Most "black" areas of a character will be around 200.
+- If we add them together (if two characters overlap at a pixel), we will get 255 (clamped)
+ - So an assumption is made that 2 overlapping characters are as dark as 100 overlapping characters
+- Matrix addition is fast and requires no padding step (just add matrix regions where they overlap)
+
+Todo:
+0. Terminology
+    "char": specific MxN pixel matrix representing a single typed character (1 row/column exactly)
+    "char vector": same as char but flattened to 1xM*N. these are stored in Annoy model
+
+    "photo" / "input image" / "source image": image to be converted into typable
+     - photo should be resized / padded to be a multiple of charWidth/2 x charHeight/2, min size 2 x 2 chars
+    "typable": the output of the algorithm. M'xN' matrix of indices for chars (number rows, number columns)
+    "mockup": composite image of chars in typable
+     - goal is to make _mockup_ resemble _photo_ as closely as possible
+
+    "pixel grid" / "photo grid": pixel coordinates in photo
+    "char grid": positions of chars in relation to pixel grid
+
+
+    (later...)
+     - ex. if char.shape is (20,32), [20,32] on the pixel grid would be [2,2] on the char grid
+       - Why not [1,1]? Because of the double overlap, char at [1,1] is at pixel [10,16]
+
+    "overlap": multiple typed layers, offset by a certain amount
+    "horizontal overlap": page is shifted charWidth/2 to the left compared to original
+    "vertical overlap": page is shifted charHeight/2 down compared to original
+    "double overlap": 4 overlapping layers, [ [TL, TR], [BL, BR] ]
+
+
+2. Sanity check on ANN selection of images
+ - No overlapping, scan through input image left to right with a certain window size (matching the char size)
+ - Use a generated photo containing only chars, positioned on char grid
+ - Create typable and mockup, compare with original (both visually and SSIR)
+
+
+2019-01-11
+
+Using ANN selection alone doesn't seem to work very well. Only considers shape, not tone
+- See hemingway_annoy.png
+
+- Verify that chopping, ANN select are working properly (robustly)
+ - Verify math is correct (write formulas by hand)
+    - Math is correct, but roundtrip increases lightness! (WHY?)
+    - See hemingway1, hemingway1m, hemingway1m2
+    - FIXED! it was matplotlib's imsave(). Using cv2.imwrite() instead
+
+ - end to end system, reconstructing the same image as used for charset
+  - should work perfectly when rowLength == slicesX
+   - up to the point at which slices become so small they lose shape information
+
+ - Make diagram of software model
+
+- Test other skimage selection algorithms: SSIM, PSNR, NRMSE, MSE
+ - done. Output from PSNR, NRMSE, MSE all identical - use MSE only
+ - Compare with different distance metrics in Annoy
+  - dot and hamming don't work
+  - euclidean is same as MSE
+  - manhattan very similar to MSE, just more contrasty
+  - angular is similar to SSIM as seen previously (with Text charset)
+  - SSIM is more similar to MSE than any NN selection with images
+  - adding more Trees to Annoy makes no difference (default 10 is fine)
+ - Combination of Annoy:Angular and MSE (select best MSE from top K NN)
+  - see mockup_80_combo_best*.png
+  - top 3 seems to be a good value
+  - lower values will be lighter shade
+  - this might work well for combining separate layers (ie. multiple passes)
+  - Try: using MSE on dark and/or low-contrast (shapeless) areas and NN/combo on high-contrast (shapely) areas
+  - high contrast areas can be selected in a similar way to Li priority dither
+ - Try: implement FS and Li dither (broad)
+
+- Implement tests on entire system (input image (to both charset and target) vs mockup)
+
+Notation:
+- change in step or change in dimension: delta or Q?
+ - https://math.stackexchange.com/questions/44771/is-there-an-analogue-to-the-delta-symbol-for-ratios
+
+
+2019-01-13
+
+Current state:
+- Many options exposed in selector_with_modes.py:
+   - it relies only on prep_charset_simple.py
+    Usage: python simple_selector.py sourceImg targetImg slicesX slicesY rowLength mode [distance mode] [bestK]
+    sourceImg, targetImg are file paths
+    slicesX, slicesY are positive integers
+    rowLength is best set to same as slicesX, for testing reconstruction of the same sourceImg vs targetImg
+    Mode can be: nn, ssim, mse, combo.
+        If mode is nn, distance mode can be: "angular", "euclidean", "manhattan", "hamming", or "dot". 
+        If mode is combo, bestK specifies how many 'best k' nearest neighbours are given to the MSE evaluator.
+
+- Updates in terminology to reflect change towards generic photo testing scenarios (not typewriter specific)
+    "char / slice": specific MxN pixel matrix representing a single character / input image slice  (1 row/column exactly)
+    "char vector / slice vector": same as char but flattened to 1xM*N. these are stored in Annoy model
+
+    "source image / input image / charset image": image to be sliced into chars / slices
+    "target image / photo": image to be converted into typable
+     - photo should be resized / padded to be a multiple of charWidth/2 x charHeight/2, min size 2 x 2 chars
+    "chosen slices / typable": the output of the algorithm. M'xN' matrix of indices for chars /  (number rows, number columns)
+    "output image / generated image / mockup": composite image of chosen slices
+     - goal is to make _mockup_ resemble _photo_ as closely as possible
+
+    "pixel grid": pixel coordinates (x, y) of individual pixels in an image
+    "char grid / input grid": positions of chars / slices in source image.
+    "target grid": positions of chars / slices in output image
+    "slice area / region": a specific slice in the input or target grid
+
+    (later...)
+     - ex. if char.shape is (20,32), [20,32] on the pixel grid would be [1,1] on the char grid
+
+    "overlap": multiple typed layers, offset by a certain amount
+    "horizontal overlap": page is shifted charWidth/2 to the left compared to original
+    "vertical overlap": page is shifted charHeight/2 down compared to original
+    "double overlap": 4 overlapping layers, [ [TL, TR], [BL, BR] ]
+
+Paths forward:
+- Normalize targetimage to match black/white levels of source image (charset)
+ - fixes MSE preference towards darkest character at all times
+- MSE selection on shapeless areas and NN on high-contrast shapely areas
+ - can just adjust the "bestK" parameter in combo mode, separately for each area
+ - the local contrast can be found for each slice area by Li dither algorithm
+- Try implementing the broad dither (brighten/darken entire slice areas to correct)
