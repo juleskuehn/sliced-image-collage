@@ -15,11 +15,17 @@ from prep_charset_simple import chop_charset
 import sys
 args = sys.argv
 
-if len(args) < 7:
-    print("Usage: python simple_selector.py sourceImg targetImg slicesX slicesY rowLength mode [distance mode] [blankSpace]")
-    print("Mode can be: nn, ssim, mse, combo")
-    print('Metric can be: "angular", "euclidean", "manhattan", "hamming", or "dot"')
-    exit()
+print("""Usage: python simple_selector.py sourceImg targetImg slicesX slicesY rowLength mode [distance mode / bestK] [noblank]
+    sourceImg, targetImg: file paths
+    slicesX, slicesY: positive integers
+    rowLength: best set to same as slicesX, for testing reconstruction of the same sourceImg vs targetImg
+    mode: one of "nn", "ssim", "mse", "combo"
+        If mode is nn:
+            distance mode: "angular", "euclidean", "manhattan", "hamming", or "dot"
+        If mode is combo:
+            bestK: how many nearest neighbours are given to the MSE evaluator
+    noblank: this word will override the default behaviour, which is to keep a blank space in the charset.
+    """)
 
 sourceImg = args[1]
 targetImg = args[2]
@@ -96,15 +102,33 @@ def resizePhoto(im, rowLength):
         blank = np.full((newHeight, outWidth), 255, dtype='uint8')
         blank[0:outHeight] = im
         im = blank
-        print("adding padding to", im.shape)
+        print("adding bottom padding to", im.shape)
     else:
         newHeight = inHeight
     return im, newHeight-outHeight
 
 
+# Scale contrast range of char images so that black/white levels are corrected
+# We have access to global variable "cropped" for source levels
+def matchContrast():
+    levelAdjustedChars = []
+    # Get average levels for each char
+    sourceCharAvgs = [np.average(char) for char in cropped]
+    # Get min and max levels for charset
+    sourceMin = np.min(sourceCharAvgs)
+    sourceMax = np.max(sourceCharAvgs) # Always 255 if blank character included
+    for im in cropped:
+        levelAdjustedChar = np.copy(im)
+        darkenLevel = sourceMin
+        cv2.subtract(levelAdjustedChar, darkenLevel, levelAdjustedChar)
+        cv2.multiply(levelAdjustedChar, 255 / (255-darkenLevel), levelAdjustedChar)
+        levelAdjustedChars.append(levelAdjustedChar)
+    return levelAdjustedChars
+
 # Resize photo to 10 characters wide
 rphoto, photoPadding = resizePhoto(photo, charsX)
 # print(rphoto.shape)
+levelAdjustedChars = matchContrast()
 
 
 # plt.imshow(rphoto, cmap='Greys_r')
@@ -114,15 +138,17 @@ def getSimilar(v, mode):
     maxIdx = None
     maxScore = -inf
     score = 0
+
     if mode == 'combo':
         # Select best MSE from NN: angular top 10
         bestNN = charset.get_nns_by_vector(np.ndarray.flatten(v), kBest)
         for i in bestNN:
-            score = -compare_mse(v, cropped[i])
+            score = -compare_mse(v, levelAdjustedChars[i])
             if score > maxScore:
                 maxScore = score
                 maxIdx = i
         return maxIdx
+    # else:
     for i, im in enumerate(cropped):
         if mode == 'ssim':
             score, _ = compare_ssim(v, im, full=True)

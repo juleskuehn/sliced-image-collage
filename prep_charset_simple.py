@@ -28,7 +28,7 @@ The issue of characters overextending their bounds cannot be fully addressed wit
 # Cropped images are used for comparison (selection)
 # Padded images are used for reconstruction (mockup)
 # Need to know where they are cropped for reconstruction
-def chop_charset(fn='hermes4.png', numX=80, numY=8, startX=0.62, startY=0.26, xPad=5, yPad=5, shrink=2, blankSpace=True):
+def chop_charset(fn='hermes4.png', numX=80, numY=8, startX=0.62, startY=0.26, xPad=0, yPad=0, shrink=2, blankSpace=True):
     im = cv2.imread(fn, cv2.IMREAD_GRAYSCALE)
     # im = imread(fn)[:,:,0]*255
     print("charset has shape", im.shape)
@@ -63,15 +63,15 @@ def chop_charset(fn='hermes4.png', numX=80, numY=8, startX=0.62, startY=0.26, xP
 
     for y in range(startY, im.shape[0], newStepY):
         for x in range(startX, im.shape[1], newStepX):
-            # if np.sum(im[y:y+newStepY, x:x+newStepX][:,:]) < (newStepX*newStepY*whiteThreshold*255):
-            if y+newStepY < im.shape[0] and x+newStepX < im.shape[1]:
-                tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:x+newStepX+xPad][:,:])
-            elif y+newStepY < im.shape[0]:
-                tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:][:,:])
-            elif x+newStepX < im.shape[1]:
-                tiles.append(im[y-yPad:, x-xPad:x+newStepX+xPad][:,:])
-            else:
-                tiles.append(im[y-yPad:, x-xPad:][:,:])
+            if np.sum(im[y:y+newStepY, x:x+newStepX][:,:]) < (newStepX*newStepY*whiteThreshold*255):
+                if y+newStepY < im.shape[0] and x+newStepX < im.shape[1]:
+                    tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:x+newStepX+xPad][:,:])
+                elif y+newStepY < im.shape[0] and x+newStepX == im.shape[1]:
+                    tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:][:,:])
+                elif x+newStepX < im.shape[1] and y+newStepY == im.shape[0]:
+                    tiles.append(im[y-yPad:, x-xPad:x+newStepX+xPad][:,:])
+                elif x+newStepX == im.shape[1] and  y+newStepY == im.shape[0]:
+                    tiles.append(im[y-yPad:, x-xPad:][:,:])
     # Append blank tile
     if blankSpace:
         tiles.append(np.full((newStepY+yPad*2, newStepX+xPad*2), 255.0, dtype='uint8'))
@@ -79,7 +79,7 @@ def chop_charset(fn='hermes4.png', numX=80, numY=8, startX=0.62, startY=0.26, xP
     print(len(tiles), 'characters chopped.')
 
     a = np.array(tiles)
-    # print(tiles)
+
     maxCroppedOut = -inf
     maxCropXY = (0, 0) # Top left corner of crop window
 
@@ -96,6 +96,7 @@ def chop_charset(fn='hermes4.png', numX=80, numY=8, startX=0.62, startY=0.26, xP
                 maxCropXY = (x, y)
 
     x, y = maxCropXY
+    print('cropped at ', x, y)
     # np.save('cropped_chars.npy', a[:,y:y+ySize,x:x+xSize])
 
     return a[:,y:y+ySize,x:x+xSize], tiles, (x, y), (xChange, yChange)
