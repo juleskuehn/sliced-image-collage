@@ -1,0 +1,5 @@
+__pycache__/
+archived/
+mockup/
+*.ann
+*.npy

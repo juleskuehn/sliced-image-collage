@@ -158,3 +158,18 @@ Paths forward:
  - can just adjust the "bestK" parameter in combo mode, separately for each area
  - the local contrast can be found for each slice area by Li dither algorithm
 - Try implementing the broad dither (brighten/darken entire slice areas to correct)
+
+
+2019-01-14
+
+Current state:
+- Usage remains the same.
+    - Only combo mode is worth using, practically speaking. Just set the bestK param to 1 if you want the pure NN selection.
+- Normalization is done in matchContrast()
+    - generates levelAdjustedChars
+    - has a hidden hyperparameter, darkenLevel, which controls how much black level is normalized
+
+Todo:
+- Implement broad dither (FS, Li)
+ - where is dither applied? on target image?
+- Vary bestK by image contents (once Li priority dither implemented)

@@ -119,7 +119,8 @@ def matchContrast():
     sourceMax = np.max(sourceCharAvgs) # Always 255 if blank character included
     for im in cropped:
         levelAdjustedChar = np.copy(im)
-        darkenLevel = sourceMin
+        # Hyperparameter not exposed
+        darkenLevel = sourceMin // 4
         cv2.subtract(levelAdjustedChar, darkenLevel, levelAdjustedChar)
         cv2.multiply(levelAdjustedChar, 255 / (255-darkenLevel), levelAdjustedChar)
         levelAdjustedChars.append(levelAdjustedChar)
