@@ -56,11 +56,14 @@ charset = AnnoyIndex(dim, dist)
 buildModel(dim, cropped)
 charset.load('charset.ann')
 
-# Resize photo to 10 characters wide
+# Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
 rphoto, targetPadding = resizePhoto(target, rowLength, (charWidth, charHeight), (xChange, yChange))
 levelAdjustedChars = levelAdjustChars(cropped)
 
+# This is where the magic happens! Choose slices from source to represent target
 t = genTypable(rphoto, charset, levelAdjustedChars, kBest)
+
+# Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(t, cropped, (target.shape[1], target.shape[0]), targetPadding)
 
 mockupFn = f'mockup/mockup_{rowLength}_best{kBest}_{ditherMode}.png'

@@ -53,24 +53,28 @@ def levelAdjustChars(cropped):
     for im in cropped:
         levelAdjustedChar = np.copy(im)
         # Hyperparameter not exposed
-        darkenAdjust = 4
+        darkenAdjust = 1
+        brighten = 30
         darkenLevel = sourceMin // darkenAdjust
         cv2.subtract(levelAdjustedChar, darkenLevel, levelAdjustedChar)
         cv2.multiply(
             levelAdjustedChar, 255 / (255-darkenLevel), levelAdjustedChar)
+        # cv2.add(levelAdjustedChar, brighten, levelAdjustedChar)
         levelAdjustedChars.append(levelAdjustedChar)
     return levelAdjustedChars
 
 
 # Selects source slice (index) with lowest MSE vs target slice
-def getSimilar(v, charset, levelAdjustedChars, kBest):
+def getSimilar(v, charset, levelAdjustedChars, kBest, errCorrect):
     bestNN = charset.get_nns_by_vector(np.ndarray.flatten(v), kBest)
     # Selec
     maxIdx = None
     maxScore = -inf
     score = 0
     for i in bestNN:
-        score = -compare_mse(v, levelAdjustedChars[i])
+        v2 = v.copy()
+        # cv2.subtract(v2, errCorrect, v2)
+        score = -compare_mse(v2, levelAdjustedChars[i])
         if score > maxScore:
             maxScore = score
             maxIdx = i
@@ -82,25 +86,32 @@ def genTypable(photo, charset, levelAdjustedChars, kBest):
     height, width = photo.shape
     charHeight, charWidth = levelAdjustedChars[0].shape
     typable = np.zeros((height//charHeight, width//charWidth), dtype=object)
+    ditherMap = np.zeros((height//charHeight+2, width//charWidth+2), dtype=object)
+    err = 0 # For dither
     for y in range(typable.shape[0]):
         for x in range(typable.shape[1]):
             startY = y*charHeight
             startX = x*charWidth
             endY = (y+1)*charHeight
             endX = (x+1)*charWidth
-            # Q: Can this be simplified?
-            if endY < height and endX < width:
-                v = photo[startY:endY, startX:endX]
-            elif endY < height:
-                v = photo[startY:endY, startX:]
-            elif endX < width:
-                v = photo[startY:, startX:endX]
-            else:
-                v = photo[startY:, startX:]
-
-            chosenIdx = getSimilar(v, charset, levelAdjustedChars, kBest)
+            v = photo[startY:endY, startX:endX].copy()
+            chosenIdx = getSimilar(
+                v, charset, levelAdjustedChars, kBest, ditherMap[y+1, x+1])
             typable[y, x] = chosenIdx
+            err = np.average(levelAdjustedChars[chosenIdx]) - np.average(v)
+            # ditherMap = ditherFS(y+1, x+1, err, ditherMap)
+            # print(ditherMap)
     return typable
+
+
+def ditherFS(y, x, err, ditherMap):
+    # ditherMap is padded by 1 in both dimensions
+    ditherMap[y, x+1] += err * 7/16
+    ditherMap[y+1, x-1] += err * 3/16
+    ditherMap[y+1, x] += err * 5/16
+    ditherMap[y+1, x+1] += err * 1/16
+
+    return ditherMap
 
 
 # Returns a mockup image, with the same size as the target image
