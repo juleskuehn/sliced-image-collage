@@ -171,5 +171,42 @@ Current state:
 
 Todo:
 - Implement broad dither (FS, Li)
- - where is dither applied? on target image?
+ - Q: where is dither applied? on target image?
 - Vary bestK by image contents (once Li priority dither implemented)
+
+
+2019-01-15
+
+Questions for prof:
+- Discuss results so far (these notes)
+ - SSIM vs ANN
+
+- Matching contrast between source and target (average levels for slice?)
+ - clipping issues
+- Dither: how to apply? On source or target slices?
+ - Does storing it in the ditherMap make sense?
+- Evaluation functions:
+ - Something better than MSE for tone matching?
+ - Varying bestK by image contents?
+  - MSE selection on shapeless areas and NN on high-contrast shapely areas
+- Overall evaluation:
+ - SSIM, PSNR ok?
+- Recommendations for GUI?
+- Performance improvements?
+ - Multiple ANN indices, one for angular, one for euclidean or manhattan?
+ - Faster blend_modes?
+
+- Make diagram of software model
+
+
+2019-01-16
+
+- Using a second NN index by Euclidean doesn't work as well as comparing MSE (after selecting kBest from angular metric).
+- It is much faster though
+- Tried doing a combination of Angular and Euclidean ranks to determine best option. Results are OK.
+ - perhaps a combination of scores rather than ranks? but different scales
+
+Current state:
+- fiddling with metrics
+- fiddling with contrast matching of charset
+ - THIS IS IMPORTANT

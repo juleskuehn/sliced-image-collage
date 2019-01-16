@@ -10,12 +10,13 @@ import cv2
 from math import inf, floor, ceil
 from skimage.measure import compare_ssim, compare_mse, compare_nrmse, compare_psnr
 
-def buildModel(dim, cropped, trees=10):
-    charset = AnnoyIndex(dim)
-    for i, char in enumerate(cropped):
-        charset.add_item(i, np.ndarray.flatten(char))
-    charset.build(trees)
-    charset.save('charset.ann')
+def buildModel(dim, slices, distMetric, trees=10):
+    model = AnnoyIndex(dim, metric=distMetric)
+    for i, char in enumerate(slices):
+        model.add_item(i, np.ndarray.flatten(char))
+    model.build(trees)
+    model.save(distMetric+'.ann')
+    return model
 
 
 # Resizes targetImg to be a multiple of character width
@@ -48,43 +49,52 @@ def levelAdjustChars(cropped):
     levelAdjustedChars = []
     sourceCharAvgs = [np.average(char) for char in cropped]
     sourceMin = np.min(sourceCharAvgs)
+    print(sourceMin)
     # Always 255 if blank character included
     sourceMax = np.max(sourceCharAvgs)
     for im in cropped:
         levelAdjustedChar = np.copy(im)
-        # Hyperparameter not exposed
+        # Hyperparameters not exposed
         darkenAdjust = 1
         brighten = 30
+
         darkenLevel = sourceMin // darkenAdjust
         cv2.subtract(levelAdjustedChar, darkenLevel, levelAdjustedChar)
-        cv2.multiply(
-            levelAdjustedChar, 255 / (255-darkenLevel), levelAdjustedChar)
+        cv2.multiply(levelAdjustedChar, 255 / (255-darkenLevel), levelAdjustedChar)
         # cv2.add(levelAdjustedChar, brighten, levelAdjustedChar)
         levelAdjustedChars.append(levelAdjustedChar)
     return levelAdjustedChars
 
 
 # Selects source slice (index) with lowest MSE vs target slice
-def getSimilar(v, charset, levelAdjustedChars, kBest, errCorrect):
-    bestNN = charset.get_nns_by_vector(np.ndarray.flatten(v), kBest)
-    # Selec
-    maxIdx = None
-    maxScore = -inf
-    score = 0
-    for i in bestNN:
-        v2 = v.copy()
-        # cv2.subtract(v2, errCorrect, v2)
-        score = -compare_mse(v2, levelAdjustedChars[i])
-        if score > maxScore:
-            maxScore = score
-            maxIdx = i
-    return maxIdx
+def getSimilar(v, angularNN, euclideanNN, kBest, errCorrect, levelAdjustedChars):
+    # Before applying dither, find the best matches for shape
+    bestAngular = angularNN.get_nns_by_vector(np.ndarray.flatten(v), kBest, include_distances=False)
+    bestEuclidean = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), kBest, include_distances=False)
+    # print("best angular:")
+    # print(bestAngular)
+    # print("best euclidean:")
+    # print(bestEuclidean)
+    bestIdx = None
+    minScore = inf
+    for i in bestAngular:
+        score = compare_mse(v, levelAdjustedChars[i])
+        # score = abs(np.average(v) - np.average(levelAdjustedChars[i]))
+        if score < minScore:
+            minScore = score
+            bestIdx = i
+    # for i, aIdx in enumerate(bestAngular):
+    #     for j, eIdx in enumerate(bestEuclidean):
+    #         if aIdx == eIdx and i+j < minScore:
+    #             minScore = i+j
+    #             bestIdx = aIdx
+    return bestIdx
 
 
 # Returns 2d array: indices of chosen source slices to best approximate target image
-def genTypable(photo, charset, levelAdjustedChars, kBest):
+def genTypable(photo, charShape, angularNN, euclideanNN, kBest, levelAdjustedChars):
     height, width = photo.shape
-    charHeight, charWidth = levelAdjustedChars[0].shape
+    charHeight, charWidth = charShape
     typable = np.zeros((height//charHeight, width//charWidth), dtype=object)
     ditherMap = np.zeros((height//charHeight+2, width//charWidth+2), dtype=object)
     err = 0 # For dither
@@ -96,9 +106,9 @@ def genTypable(photo, charset, levelAdjustedChars, kBest):
             endX = (x+1)*charWidth
             v = photo[startY:endY, startX:endX].copy()
             chosenIdx = getSimilar(
-                v, charset, levelAdjustedChars, kBest, ditherMap[y+1, x+1])
+                v, angularNN, euclideanNN, kBest, ditherMap[y+1, x+1], levelAdjustedChars)
             typable[y, x] = chosenIdx
-            err = np.average(levelAdjustedChars[chosenIdx]) - np.average(v)
+            # err = np.average(levelAdjustedChars[chosenIdx]) - np.average(v)
             # ditherMap = ditherFS(y+1, x+1, err, ditherMap)
             # print(ditherMap)
     return typable
