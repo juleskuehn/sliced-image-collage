@@ -210,3 +210,74 @@ Current state:
 - fiddling with metrics
 - fiddling with contrast matching of charset
  - THIS IS IMPORTANT
+
+Todo:
+- fix edge problems (instead of padding white, copy last row of pixels)
+ - Fixed.
+- no more working against Arya image
+- work against test images: gradients
+ - best way to evaluate contrast matching
+   - should be option to normalize against target image
+    - darkest source slice becomes as dark as darkest target slice
+    - lightest source slice becomes as dark as lightest target slice
+   - vs. normalizing only source (recommended)
+    - darkest source slice becomes effectively black
+    - lightest source slice becomes effectively white
+   - vs. no normalization
+- evaluation (target vs mockup)
+
+
+- rewrite using classes:
+ - Slice
+  - .actualAvg (float)
+  - .normalAvg (float)
+  - .data (2d array)
+ - Photo (can be source or target) ?
+  - originalData
+  - resizedData
+  - amount of padding
+  - proportion changes
+  - slices?
+  - sliceMap (2d array) ('typable')?
+   - this would be [[0,1,2],[3,4,5]] etc. initially
+  - errorMap (matching typable dimensions)
+  - Mockup is also a photo (subclass?)
+ - Metric(sourceSlices)
+  - uniform interface to different comparisons
+   - angular, euclidean NN
+   - mse, ssim
+   - average
+   - combinations of above (nested use)
+   - would be nice to have outputs of metrics uniformly scaled...
+  - .getSimilar(slice, kBest)
+   - slice would need dither applied before being sent to this method
+   - getSimilar returns array of k most similar slice indices
+ - Mockup(source, target, params, hyperparams)
+  - constructor generates mockup
+  - .errorMap
+  - .sliceMap
+  - .dither(idx, error, mode=fs)
+   - there is 'error' at 'idx'
+   - propagate it out according to 'mode'
+  - .data
+  - .evaluate('metric')
+   - note this does not take Metric object
+   - different implementations of evaluation for each 'metric'
+   - this can do the cropping and resizing
+  - .render()
+   - gives back a resized image made from slices
+    - proportions corrected
+  - .renderCrop()
+   - renders, then crops out the padding to match source image
+   - called by .evaluate()
+
+
+Dicts:
+ - params = { sourceFn, targetFn, srcSlices(x,y), rowLength }
+ - hyperparams = { mode, ditherMode, kBest, etc }
+
+
+Photo has slices and slicesMap
+Target must be resized in a special way
+And mockup must be resized in the inverse of that
+Where should the "chopCharset" be implemented?

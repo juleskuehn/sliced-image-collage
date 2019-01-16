@@ -45,7 +45,8 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     fn=sourceImg, numX=slicesX, numY=slicesY, startX=0, startY=0,
     xPad=0, yPad=0, shrink=1, blankSpace=blankSpace)
 
-levelAdjustedChars = levelAdjustChars(cropped)
+# levelAdjustedChars = levelAdjustChars(cropped)
+levelAdjustedChars = cropped
 
 # Dimensions of a single char
 charHeight, charWidth = cropped[0].shape
@@ -65,9 +66,9 @@ rphoto, targetPadding = resizePhoto(target, rowLength, (charWidth, charHeight), 
 t = genTypable(rphoto, cropped[0].shape, angularNN, euclideanNN, kBest, levelAdjustedChars)
 
 # Generate  mockup (reconstruction of target in terms of source)
-m = genMockup(t, cropped, (target.shape[1], target.shape[0]), targetPadding)
+m = genMockup(t, levelAdjustedChars, (target.shape[1], target.shape[0]), targetPadding)
 
-mockupFn = f'mockup/mockup_{rowLength}_best{kBest}_{ditherMode}.png'
+mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_best{kBest}.png"
 print("writing file:")
 print(mockupFn)
 cv2.imwrite(mockupFn, m)

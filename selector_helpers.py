@@ -36,6 +36,7 @@ def resizePhoto(im, rowLength, charShape, charChange):
         newHeight = (outHeight//charHeight + 1) * charHeight
         blank = np.full((newHeight, outWidth), 255, dtype='uint8')
         blank[0:outHeight] = im
+        blank[outHeight:] = np.tile(im[-1],(newHeight-outHeight,1))
         im = blank
         print("target padded to", im.shape)
     else:
@@ -46,24 +47,7 @@ def resizePhoto(im, rowLength, charShape, charChange):
 # Scales black/white levels of charset
 # Uses global variable "cropped" for char levels
 def levelAdjustChars(cropped):
-    levelAdjustedChars = []
-    sourceCharAvgs = [np.average(char) for char in cropped]
-    sourceMin = np.min(sourceCharAvgs)
-    print(sourceMin)
-    # Always 255 if blank character included
-    sourceMax = np.max(sourceCharAvgs)
-    for im in cropped:
-        levelAdjustedChar = np.copy(im)
-        # Hyperparameters not exposed
-        darkenAdjust = 1
-        brighten = 30
-
-        darkenLevel = sourceMin // darkenAdjust
-        cv2.subtract(levelAdjustedChar, darkenLevel, levelAdjustedChar)
-        cv2.multiply(levelAdjustedChar, 255 / (255-darkenLevel), levelAdjustedChar)
-        # cv2.add(levelAdjustedChar, brighten, levelAdjustedChar)
-        levelAdjustedChars.append(levelAdjustedChar)
-    return levelAdjustedChars
+    return cropped
 
 
 # Selects source slice (index) with lowest MSE vs target slice
@@ -71,23 +55,14 @@ def getSimilar(v, angularNN, euclideanNN, kBest, errCorrect, levelAdjustedChars)
     # Before applying dither, find the best matches for shape
     bestAngular = angularNN.get_nns_by_vector(np.ndarray.flatten(v), kBest, include_distances=False)
     bestEuclidean = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), kBest, include_distances=False)
-    # print("best angular:")
-    # print(bestAngular)
-    # print("best euclidean:")
-    # print(bestEuclidean)
     bestIdx = None
     minScore = inf
-    for i in bestAngular:
+    for i in bestEuclidean:
         score = compare_mse(v, levelAdjustedChars[i])
         # score = abs(np.average(v) - np.average(levelAdjustedChars[i]))
         if score < minScore:
             minScore = score
             bestIdx = i
-    # for i, aIdx in enumerate(bestAngular):
-    #     for j, eIdx in enumerate(bestEuclidean):
-    #         if aIdx == eIdx and i+j < minScore:
-    #             minScore = i+j
-    #             bestIdx = aIdx
     return bestIdx
 
 
@@ -137,14 +112,7 @@ def genMockup(typable, cropped, targetShape, targetPadding):
             startX = x*charWidth
             endY = (y+1)*charHeight
             endX = (x+1)*charWidth
-            if endY < tHeight*charHeight and endX < tWidth*charWidth:
-                mockup[startY:endY, startX:endX] = cropped[typable[y, x]]
-            elif endY < tHeight*charHeight:
-                mockup[startY:endY, startX:] = cropped[typable[y, x]]
-            elif endX < tWidth*charWidth:
-                mockup[startY:, startX:endX] = cropped[typable[y, x]]
-            else:
-                mockup[startY:, startX:] = cropped[typable[y, x]]
+            mockup[startY:endY, startX:endX] = cropped[typable[y, x]]
 
     # Crop and resize mockup to match target image
     if targetPadding > 0:
@@ -215,14 +183,7 @@ def chop_charset(fn='hermes4.png', numX=80, numY=8, startX=0.62, startY=0.26, xP
     for y in range(startY, im.shape[0], newStepY):
         for x in range(startX, im.shape[1], newStepX):
             if np.sum(im[y:y+newStepY, x:x+newStepX][:,:]) < (newStepX*newStepY*whiteThreshold*255):
-                if y+newStepY < im.shape[0] and x+newStepX < im.shape[1]:
-                    tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:x+newStepX+xPad][:,:])
-                elif y+newStepY < im.shape[0] and x+newStepX == im.shape[1]:
-                    tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:][:,:])
-                elif x+newStepX < im.shape[1] and y+newStepY == im.shape[0]:
-                    tiles.append(im[y-yPad:, x-xPad:x+newStepX+xPad][:,:])
-                elif x+newStepX == im.shape[1] and  y+newStepY == im.shape[0]:
-                    tiles.append(im[y-yPad:, x-xPad:][:,:])
+                tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:x+newStepX+xPad][:,:])
     # Append blank tile
     if blankSpace:
         tiles.append(np.full((newStepY+yPad*2, newStepX+xPad*2), 255.0, dtype='uint8'))
