@@ -49,18 +49,13 @@ def levelAdjustChars(cropped):
     levelAdjustedChars = []
     sourceCharAvgs = [np.average(char) for char in cropped]
     sourceMin = np.min(sourceCharAvgs)
-    print(sourceMin)
-    # Always 255 if blank character included
-    sourceMax = np.max(sourceCharAvgs)
+    sourceMax = np.max(sourceCharAvgs) # Always 255 if blank character included
     for im in cropped:
         levelAdjustedChar = np.copy(im)
         # Hyperparameters not exposed
-        darkenAdjust = 1
-        brighten = 30
-
-        darkenLevel = sourceMin // darkenAdjust
-        cv2.subtract(levelAdjustedChar, darkenLevel, levelAdjustedChar)
-        cv2.multiply(levelAdjustedChar, 255 / (255-darkenLevel), levelAdjustedChar)
+        charBrightness = np.average(im)
+        nrmlBrightness = 255 - (255*(charBrightness-sourceMin))/(sourceMax-sourceMin)
+        print(nrmlBrightness)
         # cv2.add(levelAdjustedChar, brighten, levelAdjustedChar)
         levelAdjustedChars.append(levelAdjustedChar)
     return levelAdjustedChars
