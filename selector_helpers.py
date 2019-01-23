@@ -127,7 +127,7 @@ def genMockup(typable, cropped, targetShape, targetPadding):
 # Returns ([cropped images], [padded images], (cropPosX, cropPosY))
 # Cropped images are used for comparison (selection)
 # Padded images can be used for reconstruction (mockup) but are not strictly necessary
-def chop_charset(fn='hermes4.png', numX=80, numY=8, startX=0.62, startY=0.26, xPad=0, yPad=0, shrink=2, blankSpace=True):
+def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, yPad=0, shrink=1, blankSpace=True):
     """
     The trick is that each quadrant needs to be integer-sized (unlikely this will occur naturally), while maintaining proportionality. So we do some resizing and keep track of the changes in proportion:
 

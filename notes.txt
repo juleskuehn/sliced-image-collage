@@ -281,3 +281,49 @@ Photo has slices and slicesMap
 Target must be resized in a special way
 And mockup must be resized in the inverse of that
 Where should the "chopCharset" be implemented?
+
+
+2019-01-20
+
+Preparing for meeting this week:
+- Matching contrast between source and target (average levels for slice?)
+  * - IDEA: match target levels to source:
+  * raise measured black level of target (lowest avg. of target slice) to lowest avg. of source slice.
+        diff = (minAvgSourceSlice - minAvgTargetSlice)
+        target = (target * (255-diff)/255) + diff
+        A: Modify the image (either source or target) that has more midtone variation
+         - in my case, this is never the "source" if it is a typed character set
+- Dither: storing it in the ditherMap make sense? YES.
+- Evaluation functions:
+ - Something better than MSE for tone matching? NO
+ * Varying bestK by shapeliness? YES.
+ * - Instead of bestK, shapeliness dictates the weight given to scores for Euclidean vs Angular distance
+
+- Compositing:
+ * Faster blend_modes?
+ - A: even just adding is fine (low priority to make this better)
+ - A: Alpha to represent ink: 0 is no ink, 1 is full ink (full black)
+  - multiply by 1-alpha.
+  - "alpha blend modes"
+
+- Tests:
+- Overall evaluation:
+ - SSIM, PSNR ok? YES. Implement.
+ * SSIM vs Angular NN, MSE vs Euclidean NN correlations
+  - on different datasets:
+   - MNIST, typed chars, faces
+   - with members of same dataset, or others.
+   - can show clusters with T-SNE, etc. (not from ANN model necessarily)
+   - how to show from knowing only distances? (ex. from ANN models)
+    - input all points distance to all other points ie
+          p1  p2  p3  p4
+     p1   .1  .2  .5  .2
+     p2   .2  .8  .6  .3  
+     p3   .5  .6  .8  .1
+     p4   .2  .3  .1  .7
+     Then use dimensionality reduction to get into a nicer embedding.
+
+- characterizing edges to determine order of character selection
+ - gradient magnitude (like contrast, but not a ratio)
+  - can approx by taking sumSq(diffX, diffY)
+  - can simply sum the gradient magnitude of slices
