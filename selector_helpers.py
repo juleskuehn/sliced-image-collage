@@ -9,6 +9,7 @@ from PIL import Image
 import cv2
 from math import inf, floor, ceil
 from skimage.measure import compare_ssim, compare_mse, compare_nrmse, compare_psnr
+import operator
 
 def buildModel(dim, slices, distMetric, trees=10):
     model = AnnoyIndex(dim, metric=distMetric)
@@ -51,19 +52,39 @@ def levelAdjustChars(cropped):
 
 
 # Selects source slice (index) with lowest MSE vs target slice
-def getSimilar(v, angularNN, euclideanNN, kBest, errCorrect, levelAdjustedChars):
+def getSimilar(v, angularNN, euclideanNN, shapeliness, errCorrect, levelAdjustedChars):
     # Before applying dither, find the best matches for shape
-    bestAngular = angularNN.get_nns_by_vector(np.ndarray.flatten(v), kBest, include_distances=False)
-    bestEuclidean = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), kBest, include_distances=False)
-    bestIdx = None
-    minScore = inf
-    for i in bestEuclidean:
-        score = compare_mse(v, levelAdjustedChars[i])
-        # score = abs(np.average(v) - np.average(levelAdjustedChars[i]))
-        if score < minScore:
-            minScore = score
-            bestIdx = i
-    return bestIdx
+    aIndices, aScores = angularNN.get_nns_by_vector(np.ndarray.flatten(v), 3, include_distances=True)
+    eIndices, eScores = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), 3, include_distances=True)
+    
+    maxAngular = np.max(aScores)
+    minAngular = np.min(aScores)
+    maxEuclidean = np.max(eScores)
+    minEuclidean = np.min(eScores)
+    
+    aScores = (aScores - minAngular) / (maxAngular - minAngular)
+    eScores = (eScores - minEuclidean) / (maxEuclidean - minEuclidean)
+    aScores *= shapeliness
+    eScores *= (1 - shapeliness)
+
+    aDict = dict(zip(aIndices, aScores))
+    eDict = dict(zip(eIndices, eScores))
+
+    cDict = {key: aDict.get(key, 0) + eDict.get(key, 0)
+          for key in set(aDict) | set(eDict)}
+
+    return max(cDict.items(), key=operator.itemgetter(1))[0]
+
+
+    # bestIdx = None
+    # minScore = inf
+    # for i in bestEuclidean:
+    #     score = compare_mse(v, levelAdjustedChars[i])
+    #     # score = abs(np.average(v) - np.average(levelAdjustedChars[i]))
+    #     if score < minScore:
+    #         minScore = score
+    #         bestIdx = i
+    # return values.index(min(values))
 
 
 # Returns 2d array: indices of chosen source slices to best approximate target image

@@ -32,7 +32,7 @@ targetImg = args[2]
 slicesX = int(args[3])
 slicesY = int(args[4])
 rowLength = int(args[5])
-kBest = int(args[6])
+kBest = float(args[6])
 ditherMode = 'none'
 
 blankSpace = not 'noblank' in args
@@ -43,56 +43,7 @@ print("target photo has shape", target.shape)
 # Get character set and related info
 cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     fn=sourceImg, numX=slicesX, numY=slicesY, startX=0, startY=0,
-    xPad=0, yPad=0, shrink=1, blankSpace=blankSpace)
-
-# Generate combos
-def gen_combos(charset, numChars=10):
-    inv = []
-    # Invert colors
-    for char in charset[:numChars]:
-        inv.append(np.array(char * -1 + 255, dtype="uint8"))
-
-    charHeight, charWidth = charset[0].shape
-    halfHeight, halfWidth = charHeight//2, charWidth//2
-
-    combos = [] # [ index, data ]
-    for i, charTL in enumerate(inv):
-        for j, charTR in enumerate(inv):
-            for k, charBL in enumerate(inv):
-                for l, charBR in enumerate(inv):
-                    # Trivial compositing
-                    imgData = np.zeros((charHeight+halfHeight, charWidth+halfWidth), dtype="uint8")
-                    imgData[:charHeight, :charWidth] = charTL
-                    imgData[:charHeight, halfWidth:] = cv2.add(
-                        imgData[:charHeight, halfWidth:], charTR)
-                    imgData[halfHeight:, :charWidth] = cv2.add(
-                        imgData[halfHeight:, :charWidth], charBL)
-                    imgData[halfHeight:, halfWidth:] = cv2.add(
-                        imgData[halfHeight:, halfWidth:], charBR)
-
-                    combos.append([(i, j, k, l), imgData])
-
-    print(len(combos))
-    return combos
-
-def composite6(charTL, charTC, charTR, charBL, charBC, charBR):
-    charHeight, charWidth = charTL.shape
-    halfHeight, halfWidth = charHeight//2, charWidth//2
-
-    imgData = np.zeros((charHeight+halfHeight, charWidth*2), dtype="uint8")
-    imgData[:charHeight, :charWidth] = charTL
-    imgData[:charHeight, halfWidth:charWidth+halfWidth] = cv2.add(
-        imgData[:charHeight, halfWidth:charWidth+halfWidth], charTC)
-    imgData[:charHeight, charWidth:]= cv2.add(
-        imgData[:charHeight, charWidth:], charTR)
-    imgData[halfHeight:, :charWidth] = cv2.add(
-        imgData[halfHeight:, :charWidth], charBL)
-    imgData[halfHeight:, halfWidth:charWidth+halfWidth] = cv2.add(
-        imgData[halfHeight:, halfWidth:charWidth+halfWidth], charBC)
-    imgData[halfHeight:, charWidth:] = cv2.add(
-        imgData[halfHeight:, charWidth:], charBR)
-        
-    return np.array(imgData * -1 + 255, dtype='uint8')
+    xPad=0, yPad=0, shrink=4, blankSpace=blankSpace)
 
 def composite6Mult(charTL, charTC, charTR, charBL, charBC, charBR):
     charHeight, charWidth = charTL.shape
@@ -110,32 +61,14 @@ def composite6Mult(charTL, charTC, charTR, charBL, charBC, charBR):
 
 
 # Generate combos
-def gen_combos6(charset, numChars=10):
-    inv = []
-    # Invert colors
-    for char in charset[-numChars:]:
-        inv.append(np.array(char * -1 + 255, dtype="uint8"))
-
-    combos = [] # [ index, data ]
-    for i, charTL in enumerate(inv):
-        for j, charTC in enumerate(inv):
-            for k, charTR in enumerate(inv):
-                for l, charBL in enumerate(inv):
-                    for m, charBC in enumerate(inv):
-                        for n, charBR in enumerate(inv):
-                            # Trivial compositing
-                            imgData = composite6(charTL, charTC, charTR, charBL, charBC, charBR)
-                            combos.append([(i, j, k, l), imgData])
-
-    print(len(combos))
-    return combos
-
-# Generate combos
 def gen_combos6Mult(charset):
     inv = []
     # Invert colors
     for char in charset:
         inv.append(np.array(char / 255, dtype="float32"))
+
+    charHeight, charWidth = charset[0].shape
+    halfHeight, halfWidth = charHeight//2, charWidth//2
 
     combos = [] # [ index, data ]
     for i, charTL in enumerate(inv):
@@ -146,7 +79,7 @@ def gen_combos6Mult(charset):
                         for n, charBR in enumerate(inv):
                             # Trivial compositing
                             imgData = composite6Mult(charTL, charTC, charTR, charBL, charBC, charBR)
-                            combos.append([(i, j, k, l), imgData])
+                            combos.append(imgData[halfHeight:charHeight, halfWidth:charWidth+halfWidth])
 
     print(len(combos))
     return combos
@@ -175,39 +108,38 @@ def gen_combos6Mult(charset):
 # 84: ?
 # 85: c with thing
 # 86: .
-bestChars = cropped[[8, 19, 30, 33, 35, 86, 44, 45, 65, 71]]
+# bestChars = cropped[[8, 19, 33, 35, 86, 44, 45, 65, 71, -1]]
+bestChars = cropped[[65, 19, 75, 76, -1]]
 
 # Takes around 5GB of ram and 20 seconds for the 1,000,000 images with addition
 # Takes around 60 seconds with multiplication (much better results)
 combos = gen_combos6Mult(bestChars)
 
-cv2.imwrite('tfile.png', combos[10][1])
-
-""" 
-# levelAdjustedChars = levelAdjustChars(cropped)
-levelAdjustedChars = cropped
+cv2.imwrite('tfile.png', combos[0])
 
 # Dimensions of a single char
-charHeight, charWidth = cropped[0].shape
+charHeight, charWidth = combos[0].shape
 dim = charWidth * charHeight
 
-angularNN = buildModel(dim, cropped, 'angular')
-# angularNN.load('angular.ann')
+# angularNN = buildModel(dim, combos, 'angular')
+angularNN = AnnoyIndex(dim, metric='angular')
+angularNN.load('angular.ann')
 
 # levelAdjustedChars = cropped
-euclideanNN = buildModel(dim, cropped, 'euclidean')
-# euclideanNN.load('euclidean.ann')
+# euclideanNN = buildModel(dim, combos, 'euclidean')
+euclideanNN = AnnoyIndex(dim, metric='euclidean')
+euclideanNN.load('euclidean.ann')
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
 rphoto, targetPadding = resizePhoto(target, rowLength, (charWidth, charHeight), (xChange, yChange))
 
 # This is where the magic happens! Choose slices from source to represent target
-t = genTypable(rphoto, cropped[0].shape, angularNN, euclideanNN, kBest, levelAdjustedChars)
+t = genTypable(rphoto, combos[0].shape, angularNN, euclideanNN, kBest, combos)
 
 # Generate  mockup (reconstruction of target in terms of source)
-m = genMockup(t, levelAdjustedChars, (target.shape[1], target.shape[0]), targetPadding)
+m = genMockup(t, combos, (target.shape[1], target.shape[0]), targetPadding)
 
 mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_best{kBest}.png"
 print("writing file:")
 print(mockupFn)
-cv2.imwrite(mockupFn, m) """
+cv2.imwrite(mockupFn, m)
