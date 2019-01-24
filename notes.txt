@@ -298,6 +298,7 @@ Preparing for meeting this week:
  - Something better than MSE for tone matching? NO
  * Varying bestK by shapeliness? YES.
  * - Instead of bestK, shapeliness dictates the weight given to scores for Euclidean vs Angular distance
+   - DONE (but shapeliness a manual hyperparamater)
 
 - Compositing:
  * Faster blend_modes?
@@ -305,6 +306,7 @@ Preparing for meeting this week:
  - A: Alpha to represent ink: 0 is no ink, 1 is full ink (full black)
   - multiply by 1-alpha.
   - "alpha blend modes"
+  - DONE
 
 - Tests:
 - Overall evaluation:
@@ -323,7 +325,59 @@ Preparing for meeting this week:
      p4   .2  .3  .1  .7
      Then use dimensionality reduction to get into a nicer embedding.
 
+- How to order selections:
+  A:
 - characterizing edges to determine order of character selection
  - gradient magnitude (like contrast, but not a ratio)
   - can approx by taking sumSq(diffX, diffY)
-  - can simply sum the gradient magnitude of slices
+  - can simply sum the gradient magnitude of slices (integrate)
+
+
+2019-01-23
+
+combo generation is slow, but working well
+- using shrunken images:
+ - try different resampling
+ - building NN models is very slow when dimensionality high; this helps a lot
+
+angular vs. euclidean metric blending works
+
+to fix:
+- everything :P
+- use .ann files to save ALL information required
+ - so combos don't need to be regenerated and subsequent runs instant
+- constraints on selection
+- this error: (at rowLength 70)
+    File ".\gen_combos.py", line 141, in <module>
+        m = genMockup(t, combos, (target.shape[1], target.shape[0]), targetPadding)
+    File "C:\Users\Jules\sliced-image-collage\selector_helpers.py", line 142, in genMock
+    up
+        resized = cv2.resize(mockup, dsize=targetShape, interpolation=cv2.INTER_CUBIC)
+    cv2.error: OpenCV(3.4.5) C:\projects\opencv-python\opencv\modules\imgproc\src\resize.c
+    pp:3784: error: (-215:Assertion failed) !ssize.empty() in function 'cv::resize'
+
+
+improve:
+- contrast matching (just implement formula in notes)
+- build GUI asap
+- full-res rendering
+- padded slices used for combo generation, and full-res rendering
+
+then:
+- order the selection process (prioritize shapeliness, etc. of slices)
+- apply dither during selection (shade error propagated to adjacent slices)
+- multi-pass selection: TL, BL for shape, and once selected: TR, BR for shade.
+ - dither can apply to one or both passes
+- dither (fine):  ???
+
+
+Decisions:
+- Multi-pass selection
+ - first pass selected from only 2 overlaps (TR, BR constrained to blank)
+    - selects for shape
+ - second pass constrains TL, BL to those chosen in first pass
+    - selects for tone
+- How many overlaps in a combo
+- How is spill factored into weighing
+ - Can we use partial spill, ie. 0.5 of the adjacent quadrant?
+   So the total width of a quadrant (+ padding/spill) is 1 complete charWidth

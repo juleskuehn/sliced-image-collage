@@ -11,7 +11,7 @@ from math import inf, floor, ceil
 from skimage.measure import compare_ssim, compare_mse, compare_nrmse, compare_psnr
 import operator
 
-def buildModel(dim, slices, distMetric, trees=10):
+def buildModel(dim, slices, distMetric, trees=100):
     model = AnnoyIndex(dim, metric=distMetric)
     for i, char in enumerate(slices):
         model.add_item(i, np.ndarray.flatten(char))

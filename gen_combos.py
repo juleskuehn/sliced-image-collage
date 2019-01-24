@@ -109,7 +109,7 @@ def gen_combos6Mult(charset):
 # 85: c with thing
 # 86: .
 # bestChars = cropped[[8, 19, 33, 35, 86, 44, 45, 65, 71, -1]]
-bestChars = cropped[[65, 19, 75, 76, -1]]
+bestChars = cropped[[65, 19, 44, -1]]
 
 # Takes around 5GB of ram and 20 seconds for the 1,000,000 images with addition
 # Takes around 60 seconds with multiplication (much better results)
@@ -121,14 +121,15 @@ cv2.imwrite('tfile.png', combos[0])
 charHeight, charWidth = combos[0].shape
 dim = charWidth * charHeight
 
-# angularNN = buildModel(dim, combos, 'angular')
-angularNN = AnnoyIndex(dim, metric='angular')
-angularNN.load('angular.ann')
-
 # levelAdjustedChars = cropped
-# euclideanNN = buildModel(dim, combos, 'euclidean')
-euclideanNN = AnnoyIndex(dim, metric='euclidean')
-euclideanNN.load('euclidean.ann')
+
+# angularNN = AnnoyIndex(dim, metric='angular')
+# angularNN.load('angular.ann')
+# euclideanNN = AnnoyIndex(dim, metric='euclidean')
+# euclideanNN.load('euclidean.ann')
+
+angularNN = buildModel(dim, combos, 'angular')
+euclideanNN = buildModel(dim, combos, 'euclidean')
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
 rphoto, targetPadding = resizePhoto(target, rowLength, (charWidth, charHeight), (xChange, yChange))
@@ -139,7 +140,7 @@ t = genTypable(rphoto, combos[0].shape, angularNN, euclideanNN, kBest, combos)
 # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(t, combos, (target.shape[1], target.shape[0]), targetPadding)
 
-mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_best{kBest}.png"
+mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w__best{kBest}.png"
 print("writing file:")
 print(mockupFn)
 cv2.imwrite(mockupFn, m)
