@@ -161,6 +161,11 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     # shrinkFactor = 2
     newStepX = ceil(stepX/shrink)
     newStepY = ceil(stepY/shrink)
+    # Ensure multiple of 2
+    if newStepX % 2 == 1:
+        newStepX += 1
+    if newStepY % 2 == 1:
+        newStepY += 1
 
     xChange = stepX / newStepX
     yChange = stepY / newStepY
