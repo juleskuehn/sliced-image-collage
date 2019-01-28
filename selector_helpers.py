@@ -51,11 +51,26 @@ def levelAdjustChars(cropped):
     return cropped
 
 
+def ok(idx, constraints, idxToConstraint):
+    chars = idxToConstraint[idx]
+    print(chars)
+    for i in range(len(constraints)):
+        if constraints[i] and chars[i] != constraints[i]:
+            # print(chars)
+            # print("failed with constraints:")
+            # print(constraints)
+            # print("---")
+            return False
+    return True
+
+
 # Selects source slice (index) with lowest MSE vs target slice
-def getSimilar(v, angularNN, euclideanNN, shapeliness, errCorrect, levelAdjustedChars):
+def getSimilar(v, angularNN, euclideanNN, shapeliness, errCorrect, levelAdjustedChars, constraints, idxToConstraint):
     # Before applying dither, find the best matches for shape
-    aIndices, aScores = angularNN.get_nns_by_vector(np.ndarray.flatten(v), 3, include_distances=True)
-    eIndices, eScores = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), 3, include_distances=True)
+    n = len(idxToConstraint) - 1
+    aIndices, aScores = angularNN.get_nns_by_vector(np.ndarray.flatten(v), n, include_distances=True)
+    eIndices, eScores = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), n, include_distances=True)
+
     
     maxAngular = np.max(aScores)
     minAngular = np.min(aScores)
@@ -71,9 +86,9 @@ def getSimilar(v, angularNN, euclideanNN, shapeliness, errCorrect, levelAdjusted
     eDict = dict(zip(eIndices, eScores))
 
     cDict = {key: aDict.get(key, 0) + eDict.get(key, 0)
-          for key in set(aDict) | set(eDict)}
+          for key in set(aDict) | set(eDict) if ok(key, constraints, idxToConstraint)}
 
-    return max(cDict.items(), key=operator.itemgetter(1))[0]
+    return min(cDict.items(), key=operator.itemgetter(1))[0]
 
 
     # bestIdx = None
@@ -88,26 +103,96 @@ def getSimilar(v, angularNN, euclideanNN, shapeliness, errCorrect, levelAdjusted
 
 
 # Returns 2d array: indices of chosen source slices to best approximate target image
-def genTypable(photo, charShape, angularNN, euclideanNN, kBest, levelAdjustedChars):
+def genTypable(photo, charShape, angularNN, euclideanNN, kBest, levelAdjustedChars, idxToConstraint):
     height, width = photo.shape
     charHeight, charWidth = charShape
-    typable = np.zeros((height//charHeight, width//charWidth), dtype=object)
+    typable = np.full((height//charHeight+2, width//charWidth+2), None, dtype=object)
     ditherMap = np.zeros((height//charHeight+2, width//charWidth+2), dtype=object)
     err = 0 # For dither
-    for y in range(typable.shape[0]):
-        for x in range(typable.shape[1]):
+    for y in range(typable.shape[0] - 2):
+        for x in range(typable.shape[1] - 2):
             startY = y*charHeight
             startX = x*charWidth
             endY = (y+1)*charHeight
             endX = (x+1)*charWidth
             v = photo[startY:endY, startX:endX].copy()
+            constraints = getConstraints(typable, y+1, x+1, idxToConstraint)
+            print(y, x, constraints)
             chosenIdx = getSimilar(
-                v, angularNN, euclideanNN, kBest, ditherMap[y+1, x+1], levelAdjustedChars)
-            typable[y, x] = chosenIdx
+                v, angularNN, euclideanNN, kBest, ditherMap[y+1, x+1], levelAdjustedChars, constraints, idxToConstraint)
+            typable[y+1, x+1] = chosenIdx
             # err = np.average(levelAdjustedChars[chosenIdx]) - np.average(v)
             # ditherMap = ditherFS(y+1, x+1, err, ditherMap)
             # print(ditherMap)
-    return typable
+    return typable[1:-1, 1:-1]
+
+def getConstraints(typable, y, x, idxToConstraint):
+    TL = (-1, -1)
+    TC = (-1, 0)
+    TR = (-1, 1)
+    L = (0, -1)
+    R = (0, 1)
+    BL = (1, -1)
+    BC = (1, 0)
+    BR = (1, 1) 
+    TLc = idxToConstraint[typable[y+TL[0], x+TL[1]]]
+    TCc = idxToConstraint[typable[y+TC[0], x+TC[1]]]
+    TRc = idxToConstraint[typable[y+TR[0], x+TR[1]]]
+    Lc = idxToConstraint[typable[y+L[0], x+L[1]]]
+    Rc = idxToConstraint[typable[y+R[0], x+R[1]]]
+    BLc = idxToConstraint[typable[y+BL[0], x+BL[1]]]
+    BCc = idxToConstraint[typable[y+BC[0], x+BC[1]]]
+    BRc = idxToConstraint[typable[y+BR[0], x+BR[1]]]
+
+    # (Top left, Top right, Bottom left, Bottom right)
+    constraints = [None, None, None, None]
+    # BR character of TL must be TL char in this slice
+    if not constraints[0]:
+        constraints[0] = TLc[3]
+
+    # # BL character of TC must be TL char in this slice
+    # if not constraints[0]:
+    #     constraints[0] = TCc[2]
+    # # BR char of TC must be TR of this slice
+    # if not constraints[1]:
+    #     constraints[1] = TCc[3]
+
+    # BL character of TR must be TR char in this slice
+    if not constraints[1]:
+        constraints[1] = TRc[2]
+
+    # # TR char of L must be TL char in this slice
+    # if not constraints[0]:
+    #     constraints[0] = Lc[1]
+    # BR char of L must be BL char in this slice
+    if not constraints[2]:
+        constraints[2] = Lc[3]
+    
+    # TL char of R must be TR char in this slice
+    # if not constraints[1]:
+    #     constraints[1] = Rc[0]
+    # BL char of R must be BR char in this slice
+    # if not constraints[3]:
+    #     constraints[3] = Rc[2]
+
+    # TR char of BL must be BL in this slice
+    # if not constraints[2]:
+    #     constraints[2] = BLc[1]
+    
+    # TL character of BC must be BL char in this slice
+    # if not constraints[2]:
+    #     constraints[2] = BCc[0]
+    # TR char of BC must be BR of this slice
+    # if not constraints[3]:
+    #     constraints[3] = BCc[1]
+
+    # TL character of BR must be BR char in this slice
+    # if not constraints[3]:
+    #     constraints[3] = TRc[0]
+
+    print(constraints)
+    return constraints
+
 
 
 def ditherFS(y, x, err, ditherMap):

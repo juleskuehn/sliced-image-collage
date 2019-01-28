@@ -43,7 +43,7 @@ print("target photo has shape", target.shape)
 # Get character set and related info
 cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     fn=sourceImg, numX=slicesX, numY=slicesY, startX=0, startY=0,
-    xPad=0, yPad=0, shrink=4, blankSpace=blankSpace)
+    xPad=0, yPad=0, shrink=1, blankSpace=blankSpace)
 
 def composite6Mult(charTL, charTC, charTR, charBL, charBC, charBR):
     charHeight, charWidth = charTL.shape
@@ -84,6 +84,45 @@ def gen_combos6Mult(charset):
     print(len(combos))
     return combos
 
+def composite4Mult(charTL, charTR, charBL, charBR):
+    charHeight, charWidth = charTL.shape
+    halfHeight, halfWidth = charHeight//2, charWidth//2
+
+    imgData = np.full((charHeight+halfHeight, charWidth+halfWidth), 1.0, dtype="float32")
+    imgData[:charHeight, :charWidth] = charTL
+    imgData[:charHeight, halfWidth:] *= charTR
+    imgData[halfHeight:, :charWidth] *= charBL
+    imgData[halfHeight:, halfWidth:] *= charBR
+        
+    return np.array(imgData * 255, dtype='uint8')
+
+
+# Generate combos
+def gen_combos4Mult(charset):
+    inv = []
+    # Invert colors
+    for char in charset:
+        inv.append(np.array(char / 255, dtype="float32"))
+
+    charHeight, charWidth = charset[0].shape
+    halfHeight, halfWidth = charHeight//2, charWidth//2
+
+    idxToConstraint = {}
+    combos = [] # [ index, data ]
+    for i, charTL in enumerate(inv):
+        for j, charTR in enumerate(inv):
+            for k, charBL in enumerate(inv):
+                for l, charBR in enumerate(inv):
+                    # Trivial compositing
+                    imgData = composite4Mult(charTL, charTR, charBL, charBR)
+                    combos.append(imgData[halfHeight:charHeight, halfWidth:charWidth])
+                    # combos.append(imgData)
+                    idxToConstraint[len(combos) - 1] = [i, j, k, l]
+
+    idxToConstraint[None] = [None, None, None, None]
+    print(len(combos))
+    return combos, idxToConstraint
+
 # 8: 0
 # 9: -
 # 10: =
@@ -108,12 +147,17 @@ def gen_combos6Mult(charset):
 # 84: ?
 # 85: c with thing
 # 86: .
-# bestChars = cropped[[8, 19, 33, 35, 86, 44, 45, 65, 71, -1]]
-bestChars = cropped[[65, 19, 44, -1]]
+# bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,85,86,-1]]
+# bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,49,50,51,52,65,71,75,76,78,83,84,85,86,-1]]
+bestChars = cropped[[65, -1]]
 
 # Takes around 5GB of ram and 20 seconds for the 1,000,000 images with addition
 # Takes around 60 seconds with multiplication (much better results)
-combos = gen_combos6Mult(bestChars)
+# combos = gen_combos6Mult(bestChars)
+combos, idxToConstraint = gen_combos4Mult(bestChars)
+# constraintToIdx = {v: k for k, v in idxToConstraint.items()}
+
+print(idxToConstraint)
 
 cv2.imwrite('tfile.png', combos[0])
 
@@ -127,20 +171,20 @@ dim = charWidth * charHeight
 # angularNN.load('angular.ann')
 # euclideanNN = AnnoyIndex(dim, metric='euclidean')
 # euclideanNN.load('euclidean.ann')
-
-angularNN = buildModel(dim, combos, 'angular')
-euclideanNN = buildModel(dim, combos, 'euclidean')
+numTrees = 10
+angularNN = buildModel(dim, combos, 'angular', trees=numTrees)
+euclideanNN = buildModel(dim, combos, 'euclidean', trees=numTrees)
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
 rphoto, targetPadding = resizePhoto(target, rowLength, (charWidth, charHeight), (xChange, yChange))
 
 # This is where the magic happens! Choose slices from source to represent target
-t = genTypable(rphoto, combos[0].shape, angularNN, euclideanNN, kBest, combos)
+t = genTypable(rphoto, combos[0].shape, angularNN, euclideanNN, kBest, combos, idxToConstraint)
 
 # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(t, combos, (target.shape[1], target.shape[0]), targetPadding)
 
-mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w__best{kBest}.png"
+mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w__best{kBest}_{numTrees}.png"
 print("writing file:")
 print(mockupFn)
 cv2.imwrite(mockupFn, m)

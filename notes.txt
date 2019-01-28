@@ -380,4 +380,14 @@ Decisions:
 - How many overlaps in a combo
 - How is spill factored into weighing
  - Can we use partial spill, ie. 0.5 of the adjacent quadrant?
-   So the total width of a quadrant (+ padding/spill) is 1 complete charWidth
+   So the total width of a quadrant (+ spill) is 1 complete charWidth
+
+Issues:
+- Having a large number of combos stored in NN model requires more trees (>10) to be effective. With a small number of combos (4096) it works fine but with a large number (millions) there becomes a lot of selection errors
+
+Other selection mechanisms:
+- Select 1 character, add it to mockup.
+ - 2nd pass, 3rd, 4th. Always add to mockup and compare composite to source slice.
+ - 
+ - But no (initial) consideration of overlap
+
