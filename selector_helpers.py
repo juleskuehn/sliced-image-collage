@@ -53,7 +53,7 @@ def levelAdjustChars(cropped):
 
 def ok(idx, constraints, idxToConstraint):
     chars = idxToConstraint[idx]
-    print(chars)
+    # print(chars)
     for i in range(len(constraints)):
         if constraints[i] and chars[i] != constraints[i]:
             # print(chars)
@@ -117,7 +117,7 @@ def genTypable(photo, charShape, angularNN, euclideanNN, kBest, levelAdjustedCha
             endX = (x+1)*charWidth
             v = photo[startY:endY, startX:endX].copy()
             constraints = getConstraints(typable, y+1, x+1, idxToConstraint)
-            print(y, x, constraints)
+            # print(y, x, constraints)
             chosenIdx = getSimilar(
                 v, angularNN, euclideanNN, kBest, ditherMap[y+1, x+1], levelAdjustedChars, constraints, idxToConstraint)
             typable[y+1, x+1] = chosenIdx
@@ -190,7 +190,7 @@ def getConstraints(typable, y, x, idxToConstraint):
     # if not constraints[3]:
     #     constraints[3] = TRc[0]
 
-    print(constraints)
+    # print(constraints)
     return constraints
 
 

@@ -115,8 +115,8 @@ def gen_combos4Mult(charset):
                 for l, charBR in enumerate(inv):
                     # Trivial compositing
                     imgData = composite4Mult(charTL, charTR, charBL, charBR)
-                    combos.append(imgData[halfHeight:charHeight, halfWidth:charWidth])
-                    # combos.append(imgData)
+                    # combos.append(imgData[halfHeight:charHeight, halfWidth:charWidth])
+                    combos.append(imgData)
                     idxToConstraint[len(combos) - 1] = [i, j, k, l]
 
     idxToConstraint[None] = [None, None, None, None]

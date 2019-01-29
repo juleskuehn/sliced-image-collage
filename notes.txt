@@ -391,3 +391,101 @@ Other selection mechanisms:
  - 
  - But no (initial) consideration of overlap
 
+
+2019-01-28
+
+Starting rewrite.
+What needs to be saved? ANN models (2). Charset object - image and params. Combo images.
+
+
+Selecting with a large combo vs 
+* Calculate how much darker (on average) overlaps are:
+
+0 1 0
+2 3 2
+0 1 0
+
+0: No overlap
+1: Horizontal overlap
+2: Vertical overlap
+3: Double overlap
+
+Get averages for each of these 4 categories for charset.
+
+The source image has already been processed to match darkest double_overlap
+Then, the source slice should be processed (before comparison) s.t.:
+slice_area_0 *= avg_no_overlap / avg_double_overlap
+slice_area_1 *= avg_h_overlap / avg_double_overlap
+slice_area_2 *= avg_v_overlap / avg_double_overlap
+slice_area_3 *= 1
+
+We could take this one step further, where
+
+1 2 3
+4 5 6
+7 8 9
+
+1: [
+    [_, _],
+    [_, x]
+   ]
+2: [
+    [_, _],
+    [x, x]
+   ]
+3: [
+    [_, _],
+    [x, _]
+   ]
+4: [
+    [_, x],
+    [_, x]
+   ]
+5: [
+    [x, x],
+    [x, x]
+   ]
+6: [
+    [x, _],
+    [x, _]
+   ]
+...
+
+Wait, we can actually get these averages as we generate the combos, by slicing the image in place! So we will have all these averages, and the *darkest* center average, by the end of combo generation.
+
+
+Problem:
+
+So let's say we have selected some sections, but not others. We will soon end up in a situation where we are choosing an area which has different constraints. With the ANN we can't store both the unconstrained AND constrained groups of 9 areas...
+
+Let's say that 6 and 9 have been already chosen by block ABCDEFGHI.
+
+1 2 3
+4 5 A B C
+7 8 D E F
+    G H I
+
+(Note that we are really only choosing 1, 2, 4, 5 if we consider the top left corner of the character to reside in those sub-slices)
+
+Instead of having only 2 pieces of overlap information for 6 (A), we now have 3 since A has been chosen already, and also 3 overlaps for 9 (D) since both A and D are chosen. We'd like to take advantage of this extra information, but if we are storing all 9 sub-slices as one vector in the ANN model, we can't.
+
+Solution? Store only the middle quadrant in ANN (as we have been). But how do we then come up with a total score? But storing smaller slices (ie. just a quarter of a character) reduces ability to shape-match.
+
+We *could* have several different ANN models with different sizes stored, for instance the full 9, and then just 1.
+
+Could compare the performance / quality of selecting 9 sub-slices independently, vs. the entire set together.
+
+b1 b2 b3
+b4 b5 b6
+b7 b8 b9
+
+We have to find the selection for b5 that maximizes sum(b1...b9):
+
+for bx in [b1...b9]:
+ bx = getBestNN()
+
+for b in b5:
+ spillScore = sum(max(b in bx where b conforms to constraints imposed by b5) for bx in [b1...b9])
+
+How long will this take? It would allow for complete information to be used at every selection!!! (within the range of the 9 sub-slices)
+It also won't require any of that compensation for some areas being limited in how dark they can be.
