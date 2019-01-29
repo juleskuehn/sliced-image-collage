@@ -62,6 +62,9 @@ class Combo:
             and (self.BL == constraints.BL or constraints.BL == None)
             and (self.BR == constraints.BR or constraints.BR == None))
 
+    def isFull(self):
+        return np.all([self.TL, self.TR, self.BL, self.BR])
+
 
 class ComboGrid:
     # A grid of shape (rows, cols) of Combos.
@@ -115,30 +118,6 @@ class ComboGrid:
             return True
         return False
 
-    def fillLinear(self, comboSet):
-        print("Linearly filling", self.grid.shape, "grid with valid combos")
-        tries = 0
-        for i in range(self.grid.shape[0]):
-            for j in range(self.grid.shape[1]):
-                for combo in comboSet.byIdx:
-                    tries += 1
-                    if self.put(i, j, combo):
-                        break
-        print("Done - took", tries, "tries.")
-
-    def fillRandomLinear(self, comboSet):
-        print("Linearly filling", self.grid.shape, "grid with valid random combos")
-        tries = 0
-        combos = comboSet.byIdx
-        for i in range(self.grid.shape[0]):
-            for j in range(self.grid.shape[1]):
-                np.random.shuffle(combos)
-                for combo in combos:
-                    tries += 1
-                    if self.put(i, j, combo):
-                        break
-        print("Done - took", tries, "tries.")
-
     def fillRandom(self, comboSet):
         print("Randomly filling", self.grid.shape, "grid with valid random combos")
         tries = 0
@@ -148,6 +127,10 @@ class ComboGrid:
                             for j in range(self.grid.shape[1])]
         np.random.shuffle(randomPositions)
         for i, j in randomPositions:
+            constraints = self.getConstraints(i, j)
+            if constraints.isFull():
+                self.grid[i,j] = constraints
+                continue
             np.random.shuffle(combos)
             for combo in combos:
                 tries += 1
@@ -214,8 +197,8 @@ def checkGrid(t):
     for i in range(t.grid.shape[0]):
         for j in range(t.grid.shape[1]):
             match = t.grid[i,j].matchesConstraints(t.getConstraints(i,j))
-            print(i, j, match)
             if not match:
+                print(i, j, match)
                 print('actual:', t.grid[i,j])
                 print('constr:', t.getConstraints(i,j))
 
