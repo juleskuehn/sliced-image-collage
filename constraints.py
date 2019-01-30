@@ -25,13 +25,13 @@ class Char:
 class Combo:
     # Stores indices of Char slices, index in ANN model
     # Optionally, stores composite image
-    def __init__(self, TL, TR, BL, BR, idx=None, chars=None):
+    def __init__(self, TL, TR, BL, BR, idx=None, charset=None):
         self.TL = TL
         self.TR = TR
         self.BL = BL
         self.BR = BR
         self.idx = idx
-        self.img = self.genComposite(chars) if chars else None
+        self.img = self.genComposite(charset) if charset else None
 
     def __str__(self):
         return str([[self.TL, self.TR], [self.BL, self.BR]])
@@ -42,15 +42,15 @@ class Combo:
     def __hash__(self):
         return hash(str(self))
 
-    # chars is the list of char slices from which combos were generated
-    def genComposite(self, chars):
+    # charset is the list of char slices from which combos were generated
+    def genComposite(self, charset):
         def toFloat(char):
             return np.array(char / 255, dtype="float32")
 
-        TLc = toFloat(chars[self.TL].BRq)
-        TRc = toFloat(chars[self.TR].BLq)
-        BLc = toFloat(chars[self.BL].TRq)
-        BRc = toFloat(chars[self.BR].TLq)
+        TLc = toFloat(charset.get(self.TL).BRq)
+        TRc = toFloat(charset.get(self.TR).BLq)
+        BLc = toFloat(charset.get(self.BL).TRq)
+        BRc = toFloat(charset.get(self.BR).TLq)
 
         img = TLc * TRc * BLc * BRc
 
@@ -154,76 +154,94 @@ class ComboGrid:
             s += s1 + '\n' + s2 + '\n' + divider + '\n'
         return s
 
+
 class ComboSet:
     # Container class with useful methods
     # Stores Combos in 4D Array for easy filtering by constraint
     # Also in a list by indices of the ANN model
-    def __init__(self, numChars):
+    def __init__(self, numChars, charset=None):
         self.byIdx = []
         self.byCombo = {}
+        self.arr4d = [] # TODO
         i = 0
-        for a in range(1, numChars):
-            for b in range(1, numChars):
-                for c in range(1, numChars):
-                    for d in range(1, numChars):
-                        combo = Combo(a,b,c,d,idx=i)
+        for a in range(1, numChars + 1):
+            for b in range(1, numChars + 1):
+                for c in range(1, numChars + 1):
+                    for d in range(1, numChars + 1):
+                        combo = Combo(a,b,c,d,idx=i,charset=charset)
                         self.byIdx.append(combo)
                         self.byCombo[combo] = i
                         i += 1
         print("Generated", i, "combos.")
 
+
+class CharSet:
+    def __init__(self, chars):
+        self.chars = [Char(0,0,i,char) for i, char in enumerate(chars)]
     
-
-testGrid = ComboGrid(3,3)
-
-t = ComboGrid(3,3)
-
-t.grid = np.empty((3,3), dtype=object)
-A = 'A'
-B = 'B'
-C = 'C'
-D = 'D'
-t.grid[0,0] = Combo(0,0,0,A)
-t.grid[0,1] = Combo(0,0,A,B)
-t.grid[0,2] = Combo(0,0,B,0)
-t.grid[1,0] = Combo(0,A,0,C)
-t.grid[1,1] = Combo(A,B,C,D)
-t.grid[1,2] = Combo(B,0,D,0)
-t.grid[2,0] = Combo(0,C,0,0)
-t.grid[2,1] = Combo(C,D,0,0)
-t.grid[2,2] = Combo(D,0,0,0)
-
-def checkGrid(t):
-    for i in range(t.grid.shape[0]):
-        for j in range(t.grid.shape[1]):
-            match = t.grid[i,j].matchesConstraints(t.getConstraints(i,j))
-            if not match:
-                print(i, j, match)
-                print('actual:', t.grid[i,j])
-                print('constr:', t.getConstraints(i,j))
+    def get(self, i):
+        return self.chars[i-1]
 
 
-f = ComboGrid(3,3)
-
-checkGrid(t)
-print(t)
-checkGrid(f)
-print(f)
-s9 = ComboSet(9)
-g3 = ComboGrid(3, 3)
-g3.fillRandom(s9)
-checkGrid(g3)
-print(g3)
+class Selector:
+    def __init__(comboSet):
+        
 
 
+def main():
+    testGrid = ComboGrid(3,3)
 
-g5 = ComboGrid(5, 5)
-g5.fillRandom(s9)
-checkGrid(g5)
-print(g5)
+    t = ComboGrid(3,3)
+
+    t.grid = np.empty((3,3), dtype=object)
+    A = 'A'
+    B = 'B'
+    C = 'C'
+    D = 'D'
+    t.grid[0,0] = Combo(0,0,0,A)
+    t.grid[0,1] = Combo(0,0,A,B)
+    t.grid[0,2] = Combo(0,0,B,0)
+    t.grid[1,0] = Combo(0,A,0,C)
+    t.grid[1,1] = Combo(A,B,C,D)
+    t.grid[1,2] = Combo(B,0,D,0)
+    t.grid[2,0] = Combo(0,C,0,0)
+    t.grid[2,1] = Combo(C,D,0,0)
+    t.grid[2,2] = Combo(D,0,0,0)
+
+    def checkGrid(t):
+        for i in range(t.grid.shape[0]):
+            for j in range(t.grid.shape[1]):
+                match = t.grid[i,j].matchesConstraints(t.getConstraints(i,j))
+                if not match:
+                    print(i, j, match)
+                    print('actual:', t.grid[i,j])
+                    print('constr:', t.getConstraints(i,j))
 
 
-g10 = ComboGrid(10, 10)
-g10.fillRandom(s9)
-checkGrid(g10)
-print(g10)
+    f = ComboGrid(3,3)
+
+    checkGrid(t)
+    print(t)
+    checkGrid(f)
+    print(f)
+    s9 = ComboSet(9)
+    g3 = ComboGrid(3, 3)
+    g3.fillRandom(s9)
+    checkGrid(g3)
+    print(g3)
+
+
+
+    g5 = ComboGrid(5, 5)
+    g5.fillRandom(s9)
+    checkGrid(g5)
+    print(g5)
+
+
+    g10 = ComboGrid(10, 10)
+    g10.fillRandom(s9)
+    checkGrid(g10)
+    print(g10)
+
+if __name__ == "__main__":
+    main()

@@ -15,7 +15,7 @@ import operator
 # Resizes targetImg to be a multiple of character width
 # Scales height to correct for change in proportion
 # Pads height to be a multiple of character height
-def resizeSource(im, rowLength, charShape, charChange):
+def resizeTarget(im, rowLength, charShape, charChange):
     charWidth, charHeight = charShape
     xChange, yChange = charChange
     inHeight, inWidth = im.shape
@@ -37,84 +37,28 @@ def resizeSource(im, rowLength, charShape, charChange):
     return im, newHeight-outHeight
 
 
-# Scales black/white levels of charset
-# Uses global variable "cropped" for char levels
-def levelAdjustSource(sourceImg):
-    return sourceImg
-
-
-# Selects source slice (index) with lowest MSE vs target slice
-def getSimilar(v, angularNN, euclideanNN, shapeliness, errCorrect, levelAdjustedChars, constraints, idxToConstraint):
-    # Before applying dither, find the best matches for shape
-    n = len(idxToConstraint) - 1
-    aIndices, aScores = angularNN.get_nns_by_vector(np.ndarray.flatten(v), n, include_distances=True)
-    eIndices, eScores = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), n, include_distances=True)
-
-    
-    maxAngular = np.max(aScores)
-    minAngular = np.min(aScores)
-    maxEuclidean = np.max(eScores)
-    minEuclidean = np.min(eScores)
-    
-    aScores = (aScores - minAngular) / (maxAngular - minAngular)
-    eScores = (eScores - minEuclidean) / (maxEuclidean - minEuclidean)
-    aScores *= shapeliness
-    eScores *= (1 - shapeliness)
-
-    aDict = dict(zip(aIndices, aScores))
-    eDict = dict(zip(eIndices, eScores))
-
-    cDict = {key: aDict.get(key, 0) + eDict.get(key, 0)
-          for key in set(aDict) | set(eDict) if ok(key, constraints, idxToConstraint)}
-
-    return min(cDict.items(), key=operator.itemgetter(1))[0]
-
-
-# Returns 2d array: indices of chosen source slices to best approximate target image
-def genTypable(photo, charShape, angularNN, euclideanNN, kBest, levelAdjustedChars, idxToConstraint):
-    height, width = photo.shape
-    charHeight, charWidth = charShape
-    typable = np.full((height//charHeight+2, width//charWidth+2), None, dtype=object)
-    ditherMap = np.zeros((height//charHeight+2, width//charWidth+2), dtype=object)
-    err = 0 # For dither
-    for y in range(typable.shape[0] - 2):
-        for x in range(typable.shape[1] - 2):
-            startY = y*charHeight
-            startX = x*charWidth
-            endY = (y+1)*charHeight
-            endX = (x+1)*charWidth
-            v = photo[startY:endY, startX:endX].copy()
-            constraints = getConstraints(typable, y+1, x+1, idxToConstraint)
-            # print(y, x, constraints)
-            chosenIdx = getSimilar(
-                v, angularNN, euclideanNN, kBest, ditherMap[y+1, x+1], levelAdjustedChars, constraints, idxToConstraint)
-            typable[y+1, x+1] = chosenIdx
-            # err = np.average(levelAdjustedChars[chosenIdx]) - np.average(v)
-            # ditherMap = ditherFS(y+1, x+1, err, ditherMap)
-            # print(ditherMap)
-    return typable[1:-1, 1:-1]
-
-
 # Returns a mockup image, with the same size as the target image
-def genMockup(typable, cropped, targetShape, targetPadding):
-    tHeight, tWidth = typable.shape
-    charHeight, charWidth = cropped[0].shape
+def genMockup(comboGrid, comboSet, targetShape, targetPadding):
+    tHeight, tWidth = comboGrid.grid.shape
+    comboW, comboH = comboSet.byIdx[0].img.shape
     # Generate output image
-    mockup = np.zeros((tHeight*charHeight, tWidth*charWidth), dtype='uint8')
+    mockup = np.zeros((tHeight*comboH, tWidth*comboW), dtype='uint8')
 
     for y in range(tHeight):
         for x in range(tWidth):
-            startY = y*charHeight
-            startX = x*charWidth
-            endY = (y+1)*charHeight
-            endX = (x+1)*charWidth
-            mockup[startY:endY, startX:endX] = cropped[typable[y, x]]
+            if comboGrid.grid[y, x].img is None:
+                continue
+            startY = y*comboH
+            startX = x*comboW
+            endY = (y+1)*comboH
+            endX = (x+1)*comboW
+            mockup[startY:endY, startX:endX] = comboGrid.grid[y, x].img.transpose()
 
     # Crop and resize mockup to match target image
     if targetPadding > 0:
         mockup = mockup[:-targetPadding, :]
         print("cropped to", mockup.shape)
-    resized = cv2.resize(mockup, dsize=targetShape, interpolation=cv2.INTER_CUBIC)
+    resized = cv2.resize(mockup, dsize=(targetShape[1],targetShape[0]), interpolation=cv2.INTER_CUBIC)
     print("mockup has shape", resized.shape)
 
     return resized

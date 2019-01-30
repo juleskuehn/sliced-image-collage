@@ -15,7 +15,7 @@ import operator
 # Resizes targetImg to be a multiple of character width
 # Scales height to correct for change in proportion
 # Pads height to be a multiple of character height
-def resizeSource(im, rowLength, charShape, charChange):
+def resizeTarget(im, rowLength, charShape, charChange):
     charWidth, charHeight = charShape
     xChange, yChange = charChange
     inHeight, inWidth = im.shape
@@ -43,35 +43,8 @@ def levelAdjustSource(sourceImg):
     return sourceImg
 
 
-# Selects source slice (index) with lowest MSE vs target slice
-def getSimilar(v, angularNN, euclideanNN, shapeliness, errCorrect, levelAdjustedChars, constraints, idxToConstraint):
-    # Before applying dither, find the best matches for shape
-    n = len(idxToConstraint) - 1
-    aIndices, aScores = angularNN.get_nns_by_vector(np.ndarray.flatten(v), n, include_distances=True)
-    eIndices, eScores = euclideanNN.get_nns_by_vector(np.ndarray.flatten(v), n, include_distances=True)
-
-    
-    maxAngular = np.max(aScores)
-    minAngular = np.min(aScores)
-    maxEuclidean = np.max(eScores)
-    minEuclidean = np.min(eScores)
-    
-    aScores = (aScores - minAngular) / (maxAngular - minAngular)
-    eScores = (eScores - minEuclidean) / (maxEuclidean - minEuclidean)
-    aScores *= shapeliness
-    eScores *= (1 - shapeliness)
-
-    aDict = dict(zip(aIndices, aScores))
-    eDict = dict(zip(eIndices, eScores))
-
-    cDict = {key: aDict.get(key, 0) + eDict.get(key, 0)
-          for key in set(aDict) | set(eDict) if ok(key, constraints, idxToConstraint)}
-
-    return min(cDict.items(), key=operator.itemgetter(1))[0]
-
-
 # Returns 2d array: indices of chosen source slices to best approximate target image
-def genTypable(photo, charShape, angularNN, euclideanNN, kBest, levelAdjustedChars, idxToConstraint):
+def genTypable(sourceImg, selector, comboSet, comboGrid):
     height, width = photo.shape
     charHeight, charWidth = charShape
     typable = np.full((height//charHeight+2, width//charWidth+2), None, dtype=object)
@@ -84,10 +57,8 @@ def genTypable(photo, charShape, angularNN, euclideanNN, kBest, levelAdjustedCha
             endY = (y+1)*charHeight
             endX = (x+1)*charWidth
             v = photo[startY:endY, startX:endX].copy()
-            constraints = getConstraints(typable, y+1, x+1, idxToConstraint)
             # print(y, x, constraints)
-            chosenIdx = getSimilar(
-                v, angularNN, euclideanNN, kBest, ditherMap[y+1, x+1], levelAdjustedChars, constraints, idxToConstraint)
+            chosenIdx = selector.
             typable[y+1, x+1] = chosenIdx
             # err = np.average(levelAdjustedChars[chosenIdx]) - np.average(v)
             # ditherMap = ditherFS(y+1, x+1, err, ditherMap)

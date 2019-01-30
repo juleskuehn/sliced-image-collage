@@ -331,7 +331,7 @@ Preparing for meeting this week:
  - gradient magnitude (like contrast, but not a ratio)
   - can approx by taking sumSq(diffX, diffY)
   - can simply sum the gradient magnitude of slices (integrate)
-
+  - look in textbooks. "sobel filter"
 
 2019-01-23
 
@@ -368,7 +368,9 @@ then:
 - apply dither during selection (shade error propagated to adjacent slices)
 - multi-pass selection: TL, BL for shape, and once selected: TR, BR for shade.
  - dither can apply to one or both passes
-- dither (fine):  ???
+- dither (fine):  ??? NO
+  - A: use Li dither with small radius (1 "subslice" pixel)
+    - A: priority dither with a Queue should be fine, 
 
 
 Decisions:
@@ -384,6 +386,9 @@ Decisions:
 
 Issues:
 - Having a large number of combos stored in NN model requires more trees (>10) to be effective. With a small number of combos (4096) it works fine but with a large number (millions) there becomes a lot of selection errors
+ - A: Use a semi-random subset including 4 of a kind, lightest, darkest, etc. up to a limit that works. include 4 of same character moved around
+  - equivalence class: so you can substitute out a similar combo (that isn't in NN model) to fulfil constraints
+  - experiment: find out how many is a practical max for NN model
 
 Other selection mechanisms:
 - Select 1 character, add it to mockup.
