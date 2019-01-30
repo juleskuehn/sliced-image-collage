@@ -39,10 +39,15 @@ class Generator:
 
         # return min(scoredCombos.items(), key=operator.itemgetter(1))[0]
 
+        bestScore = -1
+        bestComboIdx = None
+
         for comboIdx, score in enumerate(scoredCombos):
-            if fitsConstraints(comboIdx):
-                return comboIdx
+            if fitsConstraints(comboIdx) and score > bestScore:
+                bestScore = score
+                bestComboIdx = comboIdx
     
+        return bestComboIdx
 
     def putBest(self, row, col):
         self.comboGrid.put(row, col, self.comboSet.byIdx[self.getBest(row, col)])
