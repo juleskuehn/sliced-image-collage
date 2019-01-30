@@ -77,19 +77,13 @@ comboSet = ComboSet(len(bestChars), charset=CharSet(bestChars))
 # cv2.imwrite('combo_first.png', comboSet.byIdx[0].img)
 # cv2.imwrite('combo_last.png', comboSet.byIdx[-1].img)
 
-for combo in comboSet.byIdx:
-    cv2.imwrite('combo_'+str(combo.idx)+'.png', combo.img)
-
-# # Dimensions of a single char
-comboH, comboW = comboSet.byIdx[0].img.shape
-dim = comboH * comboW
+# for combo in comboSet.byIdx:
+#     cv2.imwrite('combo_'+str(combo.idx)+'.png', combo.img)
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
-resizedTarged, targetPadding = resizeTarget(target, rowLength, (comboH, comboW), (xChange, yChange))
+resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0].img.shape, (xChange, yChange))
 
-numRows = resizedTarged.shape[0] // comboH
-
-generator = Generator(resizedTarged, comboSet, shapeliness=shapeliness)
+generator = Generator(resizedTarget, comboSet, shapeliness=shapeliness)
 filledComboGrid = generator.generateLinearly()
 
 # # Generate  mockup (reconstruction of target in terms of source)

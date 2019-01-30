@@ -16,7 +16,7 @@ import operator
 # Scales height to correct for change in proportion
 # Pads height to be a multiple of character height
 def resizeTarget(im, rowLength, charShape, charChange):
-    charWidth, charHeight = charShape
+    charHeight, charWidth = charShape
     xChange, yChange = charChange
     inHeight, inWidth = im.shape
     outWidth = rowLength * charWidth
@@ -39,29 +39,30 @@ def resizeTarget(im, rowLength, charShape, charChange):
 
 # Returns a mockup image, with the same size as the target image
 def genMockup(comboGrid, comboSet, targetShape, targetPadding):
-    tHeight, tWidth = comboGrid.grid.shape
-    comboW, comboH = comboSet.byIdx[0].img.shape
+    gridShape = comboGrid.grid.shape
+    comboShape = comboSet.byIdx[0].img.shape
     # Generate output image
-    mockup = np.zeros((tHeight*comboH, tWidth*comboW), dtype='uint8')
+    mockup = np.zeros((gridShape[0]*comboShape[0],
+                       gridShape[1]*comboShape[1]), dtype='uint8')
 
-    for y in range(tHeight):
-        for x in range(tWidth):
-            if comboGrid.grid[y, x].img is None:
-                continue
-            startY = y*comboH
-            startX = x*comboW
-            endY = (y+1)*comboH
-            endX = (x+1)*comboW
-            mockup[startY:endY, startX:endX] = comboGrid.grid[y, x].img.transpose()
+    for i, row in enumerate(comboGrid.grid):
+        startY = i * comboShape[0]
+        endY = (i + 1) * comboShape[0]
+        for j, combo in enumerate(row):
+            startX = j * comboShape[1]
+            endX = (j + 1) * comboShape[1]
+            mockup[startY:endY,startX:endX] = combo.img
+
 
     # Crop and resize mockup to match target image
     if targetPadding > 0:
         mockup = mockup[:-targetPadding, :]
         print("cropped to", mockup.shape)
+    # return mockup
     resized = cv2.resize(mockup, dsize=(targetShape[1],targetShape[0]), interpolation=cv2.INTER_CUBIC)
     print("mockup has shape", resized.shape)
-
     return resized
+
 
 
 # Returns ([cropped images], [padded images], (cropPosX, cropPosY))
