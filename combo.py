@@ -2,8 +2,9 @@ import numpy as np
 
 
 class Combo:
-    # Stores indices of Char slices, index in ANN model
+    # Stores indices of Char slices and index of combo in ANN model
     # Optionally, stores composite image
+    # Can also be used as a constraint (with no image or index)
     def __init__(self, TL, TR, BL, BR, idx=None, charset=None):
         self.TL = TL
         self.TR = TR

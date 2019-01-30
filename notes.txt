@@ -494,3 +494,76 @@ for b in b5:
 
 How long will this take? It would allow for complete information to be used at every selection!!! (within the range of the 9 sub-slices)
 It also won't require any of that compensation for some areas being limited in how dark they can be.
+
+
+2019-01-29
+
+constrained combo version working
+- but very slow
+- accuracy not great with random ordered selection
+
+1. speed it up
+- read through to find easy fixes
+    - Selector.getSimilar should be profiled:
+
+- profiling different functions
+- ditch NN and go constraint based (MSE, SSIM)
+
+2. get priority of slices to evaluate
+- sobel filter
+
+3. "9 sub-slices" selection window
+
+
+2019-01-30
+
+Results from speed tests:
+    Initialization (per combo):
+        ComboSet(charset=charset): 0.25ms / combo (to generate combos)
+        Selector(comboSet): 0.64 ms / combo (to build 2 ANN models)
+        ComboGrid(rows, cols): 0 ms / combo
+
+        For 10k combos:
+            2.5s to generate
+            6.4s to build ANN
+            8.9s total
+
+    Selection (per subslice - same dimension as combo):
+        getConstraints(row, col): 0.0036ms / subslice
+                                  0.0025ms with speedups
+        getSimilar(slice): 25ms / subslice with 10k combos and 2 ANN
+                           8.5ms with only one ANN for 10k combos
+                           180ms with 160k combos - ouch!
+        matchesConstraints(constraints): 0.0004ms / combo
+            so for 10k combos, 0.4ms/subslice
+        
+        For 10k subslices (full page) with 10k combos:
+            0.036s to get constraints
+            250s for 2 ANN selection 
+            or 85s for 1 ANN selection
+            4s to match constraints
+
+        Goal: 100ms vs current 100s: 1000x too slow!
+        Vast majority of time is for ANN selection (99.96%)
+
+The ANN selection is shockingly slow.
+SSIM is 263 (lets say 250) times slower, but how many comparisons can we avoid?
+Considering we select from left to right, top to bottom, each comparison needs to be for numChars**k, where k is:
+
+4 3 3 3 3
+3 2 2 2 2
+2 2 2 2 2
+2 2 2 2 2
+
+As the number of subslices under consideration grows, the number of comparisons per subslice approaches numChars**2 (only 100, vs 10000 when numChars=10). This is 100x reduction. If numChars=20, it is a 400x reduction. ie, a reduction of numChars**2.
+
+We can further speed up the selection when using SSIM (or another selector which is compatible with constraining the comparisons) by using representatives. This could reduce the size of the character set further (unclear how much - need to investigate).
+
+Todo:
+- selector using SSIM, MSE.
+- constraint based selection (4d array of combos)
+- prioritize selection order
+- consider spill
+- "lookahead" to consider spill with full information
+- how much can combo set be reduced with representatives?
+

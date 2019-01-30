@@ -4,7 +4,6 @@ from combo import Combo
 
 class ComboGrid:
     # A grid of shape (rows, cols) of Combos.
-    # A typed image with 20 rows and 20 cols would need a grid (21, 21)
     # 1 is the space (empty) character. It differs from having no constraint.
     def __init__(self, rows, cols):
         self.grid = np.array(
