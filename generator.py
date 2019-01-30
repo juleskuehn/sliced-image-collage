@@ -55,10 +55,10 @@ class Generator:
     def generateLinearly(self):
         for row in range(self.rows):
             for col in range(self.cols):
-                # constraints = self.comboGrid.getConstraints(row, col)
-                # if constraints.isFull():
-                #     self.comboGrid.grid[row, col] = constraints
-                #     continue
+                constraints = self.comboGrid.getConstraints(row, col)
+                if constraints.isFull():
+                    self.comboGrid.grid[row, col] = constraints
+                    continue
                 self.putBest(row, col)
         
         return self.comboGrid
