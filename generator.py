@@ -37,20 +37,19 @@ class Generator:
         targetImgSlice = self.targetImg[startY:endY, startX:endX]
         scoredCombos = self.selector.getSimilar(targetImgSlice, self.shapeliness)
 
-        # return min(scoredCombos.items(), key=operator.itemgetter(1))[0]
+        bestScore = 1
+        bestComboIdx = 0
 
-        bestScore = -1
-        bestComboIdx = None
-
-        for comboIdx, score in enumerate(scoredCombos):
-            if fitsConstraints(comboIdx) and score > bestScore:
-                bestScore = score
-                bestComboIdx = comboIdx
-    
+        for key in scoredCombos:
+            if fitsConstraints(key) and scoredCombos[key] < bestScore:
+                bestScore = scoredCombos[key]
+                bestComboIdx = key
+        
         return bestComboIdx
 
     def putBest(self, row, col):
-        self.comboGrid.put(row, col, self.comboSet.byIdx[self.getBest(row, col)])
+        # self.comboGrid.put(row, col, self.comboSet.byIdx[self.getBest(row, col)])
+        self.comboGrid.grid[row, col] = self.comboSet.byIdx[self.getBest(row, col)]
 
 
     def generateLinearly(self):

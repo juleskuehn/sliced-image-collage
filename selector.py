@@ -21,7 +21,7 @@ class Selector:
         dim = self.comboH * self.comboW
         model = AnnoyIndex(dim, metric=distMetric)
         for i, combo in enumerate(self.comboSet.byIdx):
-            model.add_item(i+1, np.ndarray.flatten(combo.img))
+            model.add_item(i, np.ndarray.flatten(combo.img))
         model.build(trees)
         model.save(distMetric+'.ann')
         return model
@@ -31,8 +31,8 @@ class Selector:
 
         v = np.ndarray.flatten(targetImgSlice)
         
-        aIndices, aScores = self.angularNN.get_nns_by_vector(v, len(v), include_distances=True)
-        eIndices, eScores = self.euclideanNN.get_nns_by_vector(v, len(v), include_distances=True)
+        aIndices, aScores = self.angularNN.get_nns_by_vector(v, self.comboSet.size, include_distances=True)
+        eIndices, eScores = self.euclideanNN.get_nns_by_vector(v, self.comboSet.size, include_distances=True)
 
         maxAngular = np.max(aScores)
         minAngular = np.min(aScores)
