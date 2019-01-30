@@ -35,6 +35,7 @@ slicesX = int(args[3])
 slicesY = int(args[4])
 rowLength = int(args[5])
 shapeliness = float(args[6])
+shrink = int(args[7])
 
 target = cv2.imread(targetImg, cv2.IMREAD_GRAYSCALE)
 print("target photo has shape", target.shape)
@@ -42,7 +43,7 @@ print("target photo has shape", target.shape)
 # Get character set and related info
 cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     fn=sourceImg, numX=slicesX, numY=slicesY, startX=0, startY=0,
-    xPad=0, yPad=0, shrink=1, blankSpace=True)
+    xPad=0, yPad=0, shrink=shrink, blankSpace=True)
 
 """     # 8: 0
     # 9: -
@@ -66,11 +67,13 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     # 76: ^
     # 78: X
     # 84: ?
-    # 85: c with thing
-    # 86: .
+    # 86: c with thing
+    # 87: .
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,85,86,-1]]
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,49,50,51,52,65,71,75,76,78,83,84,85,86,-1]] """
-bestChars = cropped[[-1, 6, 8,9,33,35,76, 71, 86, 44, 19, 65]] # Blank space always first
+bestChars = cropped[[-1, 87, 8, 19, 65, 33, 35, 44, 49, 75]] # Blank space always first
+for i, char in enumerate(bestChars):
+    cv2.imwrite('chars/char_'+str(i+1)+'.png', char)
 
 comboSet = ComboSet(len(bestChars), charset=CharSet(bestChars))
 
@@ -84,12 +87,12 @@ comboSet = ComboSet(len(bestChars), charset=CharSet(bestChars))
 resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0].img.shape, (xChange, yChange))
 
 generator = Generator(resizedTarget, comboSet, shapeliness=shapeliness)
-filledComboGrid = generator.generateLinearly()
+filledComboGrid = generator.generateRandomOrder()
 
 # # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(filledComboGrid, comboSet, target.shape, targetPadding)
 
-mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_shape{shapeliness}.png"
+mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_shape{shapeliness}_shrink{shrink}.png"
 print("writing file:")
 print(mockupFn)
 cv2.imwrite(mockupFn, m)

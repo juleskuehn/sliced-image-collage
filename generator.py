@@ -38,7 +38,7 @@ class Generator:
         scoredCombos = self.selector.getSimilar(targetImgSlice, self.shapeliness)
 
         bestScore = 1
-        bestComboIdx = 0
+        bestComboIdx = None
 
         for key in scoredCombos:
             if fitsConstraints(key) and scoredCombos[key] < bestScore:
@@ -48,17 +48,29 @@ class Generator:
         return bestComboIdx
 
     def putBest(self, row, col):
-        # self.comboGrid.put(row, col, self.comboSet.byIdx[self.getBest(row, col)])
-        self.comboGrid.grid[row, col] = self.comboSet.byIdx[self.getBest(row, col)]
+        self.comboGrid.put(row, col, self.comboSet.byIdx[self.getBest(row, col)])
+        # self.comboGrid.grid[row, col] = self.comboSet.byIdx[self.getBest(row, col)]
 
 
-    def generateLinearly(self):
+    def generateLinearOrder(self):
         for row in range(self.rows):
             for col in range(self.cols):
                 constraints = self.comboGrid.getConstraints(row, col)
                 if constraints.isFull():
-                    self.comboGrid.grid[row, col] = constraints
+                    self.comboGrid.grid[row, col] = self.comboSet.byCombo[constraints]
                     continue
                 self.putBest(row, col)
-        
+        return self.comboGrid
+
+    def generateRandomOrder(self):
+        randomPositions = [(row, col)
+                            for row in range(self.rows)
+                            for col in range(self.cols)]
+        np.random.shuffle(randomPositions)
+        for row, col in randomPositions:
+            constraints = self.comboGrid.getConstraints(row, col)
+            if constraints.isFull():
+                self.comboGrid.grid[row, col] = self.comboSet.byCombo[constraints]
+                continue
+            self.putBest(row, col)
         return self.comboGrid

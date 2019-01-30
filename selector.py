@@ -39,8 +39,8 @@ class Selector:
         maxEuclidean = np.max(eScores)
         minEuclidean = np.min(eScores)
         
-        aScores = (aScores - minAngular) * shapeliness / (maxAngular - minAngular)
-        eScores = (eScores - minEuclidean) * (1 - shapeliness) / (maxEuclidean - minEuclidean)
+        aScores = (aScores - minAngular) * shapeliness / maxAngular
+        eScores = (eScores - minEuclidean) * (1 - shapeliness) / maxEuclidean
 
         aDict = dict(zip(aIndices, aScores))
         eDict = dict(zip(eIndices, eScores))

@@ -62,6 +62,6 @@ class ComboSet:
                     for d in range(1, numChars + 1):
                         combo = Combo(a,b,c,d,idx=i,charset=charset)
                         self.byIdx.append(combo)
-                        self.byCombo[combo] = i
+                        self.byCombo[combo] = combo
                         i += 1
         print("Generated", i, "combos.")
