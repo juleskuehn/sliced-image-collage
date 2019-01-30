@@ -70,7 +70,7 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     # 86: .
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,85,86,-1]]
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,49,50,51,52,65,71,75,76,78,83,84,85,86,-1]] """
-bestChars = cropped[[-1, 65]] # Blank space always first
+bestChars = cropped[[-1, 8,9,33,35,65]] # Blank space always first
 
 comboSet = ComboSet(len(bestChars), charset=CharSet(bestChars))
 
