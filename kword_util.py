@@ -37,6 +37,14 @@ def resizeTarget(im, rowLength, charShape, charChange):
     return im, newHeight-outHeight
 
 
+def brightenTarget(im, comboSet):
+    minCombo = np.min([np.average(combo.img) for combo in comboSet.byIdx])
+    print(minCombo)
+    imBlack = 0 # Could test target image for this, or just leave as 0
+    diff = minCombo - imBlack
+    return im * (255-diff)/255 + diff
+
+
 # Returns a mockup image, with the same size as the target image
 def genMockup(comboGrid, comboSet, targetShape, targetPadding):
     gridShape = comboGrid.grid.shape

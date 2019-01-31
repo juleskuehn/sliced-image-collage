@@ -10,6 +10,7 @@ import cv2
 from math import inf
 from skimage.measure import compare_ssim, compare_mse, compare_nrmse, compare_psnr
 import sys
+from scipy.ndimage import sobel
 
 from combo import Combo, ComboSet
 from combo_grid import ComboGrid
@@ -71,7 +72,7 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     # 87: .
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,85,86,-1]]
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,49,50,51,52,65,71,75,76,78,83,84,85,86,-1]] """
-bestChars = cropped[[-1, 87, 8, 19, 65, 33, 35, 44, 49, 75]] # Blank space always first
+bestChars = cropped[[-1, 9, 78, 76, 33, 84, 75, 30, 86, 38, 7, 45, 50, 51, 71, 10, 87, 8, 19, 65, 33, 35, 44, 49, 75]] # Blank space always first
 for i, char in enumerate(bestChars):
     cv2.imwrite('chars/char_'+str(i+1)+'.png', char)
 
@@ -86,8 +87,11 @@ comboSet = ComboSet(len(bestChars), charset=CharSet(bestChars))
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
 resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0].img.shape, (xChange, yChange))
 
+cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
+resizedTarget = brightenTarget(resizedTarget, comboSet)
+
 generator = Generator(resizedTarget, comboSet, shapeliness=shapeliness)
-filledComboGrid = generator.generateRandomOrder()
+filledComboGrid = generator.generatePriorityOrder()
 
 # # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(filledComboGrid, comboSet, target.shape, targetPadding)

@@ -2,9 +2,10 @@ import numpy as np
 import operator
 
 from selector import Selector
-from combo import ComboSet
+from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
+import cv2
 
 class Generator:
 
@@ -52,6 +53,7 @@ class Generator:
         # self.comboGrid.grid[row, col] = self.comboSet.byIdx[self.getBest(row, col)]
 
 
+    # TODO combine generate____Order into parameterized function
     def generateLinearOrder(self):
         for row in range(self.rows):
             for col in range(self.cols):
@@ -68,6 +70,35 @@ class Generator:
                             for col in range(self.cols)]
         np.random.shuffle(randomPositions)
         for row, col in randomPositions:
+            constraints = self.comboGrid.getConstraints(row, col)
+            if constraints.isFull():
+                self.comboGrid.grid[row, col] = self.comboSet.byCombo[constraints]
+                continue
+            self.putBest(row, col)
+        return self.comboGrid
+
+    def generatePriorityOrder(self):
+
+        def calcPriorityPositions():
+            laplacian = cv2.Laplacian(self.targetImg,cv2.CV_64F)
+            d = {}
+            for row in range(self.rows):
+                for col in range(self.cols):
+                    startY = row * self.comboH
+                    startX = col * self.comboW
+                    endY = (row+1) * self.comboH
+                    endX = (col+1) * self.comboW
+                    targetSlice = laplacian[startY:endY, startX:endX]
+                    d[(row, col)] = np.sum(targetSlice)
+            return sorted(d, key=d.get, reverse=False)
+
+        priorityPositions = calcPriorityPositions()
+        i = 0
+        for row, col in priorityPositions:
+            # i += 1
+            # if i > 200:
+            #     self.comboGrid.grid[row, col] = self.comboSet.byCombo[Combo(1,1,1,1)]
+            #     continue
             constraints = self.comboGrid.getConstraints(row, col)
             if constraints.isFull():
                 self.comboGrid.grid[row, col] = self.comboSet.byCombo[constraints]

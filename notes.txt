@@ -560,10 +560,25 @@ As the number of subslices under consideration grows, the number of comparisons 
 We can further speed up the selection when using SSIM (or another selector which is compatible with constraining the comparisons) by using representatives. This could reduce the size of the character set further (unclear how much - need to investigate).
 
 Todo:
-- selector using SSIM, MSE.
-- constraint based selection (4d array of combos)
-- prioritize selection order
-- consider spill
-- "lookahead" to consider spill with full information
-- how much can combo set be reduced with representatives?
+- contrast matching
+ - DONE
 
+- prioritize selection order
+ - DONE (laplace, seems good enough)
+
+- selector using SSIM, MSE
+ - constraint based selection (4d array of combos)
+
+- consider spill
+ - "lookahead" to consider spill with full information
+
+- how much can combo set be reduced with representatives?
+ - measure similarity between combos, this could be done with ANN
+ - loop through combos matching constraints and check distance to chosen representative
+ - surely representatives must help less and less as the constraints increase?
+ - would random (or partly random) sampling be more useful that representatives for when few constraints?
+ - put bounds on error so that we can stop comparing when we found something good enough
+
+Eventually:
+- GUI
+- High res rendering (from original charset)
