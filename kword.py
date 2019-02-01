@@ -75,14 +75,20 @@ resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0
 # cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
 brightenAmount = 1
 resizedTarget = brightenTarget(resizedTarget, comboSet, brightenAmount)
+print(resizedTarget.dtype)
 
 generator = Generator(resizedTarget, comboSet)
+cv2.imwrite('lapTest.png', generator.testPriorityOrder())
+
+
 filledComboGrid = generator.generatePriorityOrder()
 
 # # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(filledComboGrid, comboSet, target.shape, targetPadding)
 
-mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_c{c}_shrink{shrink}.png"
+mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_c{c}_shrink{shrink}"
 print("writing file:")
 print(mockupFn)
-cv2.imwrite(mockupFn, m)
+
+# cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(m,0.5,target,0.5,0))
+cv2.imwrite(mockupFn+'.png', m)

@@ -1,5 +1,6 @@
 import numpy as np
 import operator
+import timeit
 
 from selector_mse_ssim import Selector
 from combo import ComboSet, Combo
@@ -20,6 +21,7 @@ class Generator:
         self.selector = Selector(self.comboSet)
         self.shapeliness = shapeliness
         self.ditherResidual = 0
+        self.times = {'dither': 0, 'putBest': 0, 'residual': 0}
 
 
     def getSliceBounds(self, row, col):
@@ -31,41 +33,56 @@ class Generator:
 
 
     def putBest(self, row, col):
+
+        def applyResidual():
+            # Attempt to apply residual
+            beforeVal = np.average(self.targetImg[startY:endY, startX:endX])
+            desiredVal = beforeVal + self.ditherResidual
+            self.targetImg[startY:endY, startX:endX] = cv2.add(
+                self.targetImg[startY:endY, startX:endX], self.ditherResidual)
+            afterVal = np.average(self.targetImg[startY:endY, startX:endX])
+            self.ditherResidual = desiredVal - afterVal
+            # print(self.ditherResidual)
+
         startX, startY, endX, endY = self.getSliceBounds(row, col)
+        self.times['residual'] += timeit.timeit(applyResidual,number=1)
 
-        # Attempt to apply residual
-        beforeVal = np.average(self.targetImg[startY:endY, startX:endX])
-        desiredVal = beforeVal + self.ditherResidual
-        self.targetImg[startY:endY, startX:endX] = cv2.add(
-            self.targetImg[startY:endY, startX:endX], self.ditherResidual)
-        afterVal = np.average(self.targetImg[startY:endY, startX:endX])
-        self.ditherResidual = desiredVal - afterVal
-        # print(self.ditherResidual)
+        def putBestMatch():
+            # Find best match
+            targetImgSlice = self.targetImg[startY:endY, startX:endX]
+            constraints = self.comboGrid.get(row, col)
+            bestMatch = self.selector.bestMSE(targetImgSlice, constraints)
+            self.comboGrid.put(row, col, bestMatch)
 
-        # Find best match
-        targetImgSlice = self.targetImg[startY:endY, startX:endX]
-        constraints = self.comboGrid.get(row, col)
-        bestMatch = self.selector.bestMSE(targetImgSlice, constraints)
-        self.comboGrid.put(row, col, bestMatch)
-        self.applyDither(row, col)
+        self.times['putBest'] += timeit.timeit(putBestMatch, number=1)
+        
+        def applyDither():
+            self.applyDither(row, col)
+
+        # self.times['dither'] += timeit.timeit(applyDither, number=1)
+
+
+    def calcPriorityPositions(self):
+        f = self.targetImg.shape[0]//7
+        if f % 2 == 0:
+            f += 1
+        src = cv2.GaussianBlur(self.targetImg, (f, f), 0)
+        # src = cv2.GaussianBlur(src, (f, f), 0)
+        laplacian = cv2.Laplacian(src ,cv2.CV_64F)
+        # cv2.imwrite('laplace.png', laplacian)
+
+        d = {}
+        for row in range(self.rows):
+            for col in range(self.cols):
+                startX, startY, endX, endY = self.getSliceBounds(row, col)
+                targetSlice = laplacian[startY:endY, startX:endX]
+                d[(row, col)] = np.sum(targetSlice)
+        # print(d)
+        return sorted(d, key=d.get, reverse=False)
 
 
     def generatePriorityOrder(self):
-
-        def calcPriorityPositions():
-            laplacian = cv2.Laplacian(self.targetImg,cv2.CV_64F)
-            cv2.imwrite('laplace.png', laplacian)
-
-            d = {}
-            for row in range(self.rows):
-                for col in range(self.cols):
-                    startX, startY, endX, endY = self.getSliceBounds(row, col)
-                    targetSlice = laplacian[startY:endY, startX:endX]
-                    d[(row, col)] = np.sum(targetSlice)
-            # print(d)
-            return sorted(d, key=d.get, reverse=False)
-
-        priorityPositions = calcPriorityPositions()
+        priorityPositions = self.calcPriorityPositions()
         i = 0
         for row, col in priorityPositions:
             # print(self.comboGrid)
@@ -74,8 +91,21 @@ class Generator:
             #     self.comboGrid.get(row, col) = self.comboSet.byCombo[Combo(1,1,1,1)]
             #     continue
             self.putBest(row, col)
-            
+        
+        print(self.times)
+        print(self.comboGrid)
         return self.comboGrid
+
+    
+    def testPriorityOrder(self):
+        priorityPositions = self.calcPriorityPositions()
+        pTestImg = np.zeros(self.targetImg.shape, dtype='uint8')
+        i = 0
+        for row, col in priorityPositions:
+            startX, startY, endX, endY = self.getSliceBounds(row, col)
+            pTestImg[startY:endY, startX:endX] = max(0, 255 - i*255/len(priorityPositions))
+            i += 1
+        return pTestImg
 
 
     # Applies dither *around* comboGrid[row, col] when that slice has already been chosen

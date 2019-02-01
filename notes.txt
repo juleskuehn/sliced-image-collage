@@ -574,18 +574,20 @@ Todo:
     - dither (Li)
      - allows for priority selection
      - DONE
-     - DONE can do "double application" of dither, and/or track residuals
+     - DONE (residuals) "double application" of dither? and/or track residuals
         - no need for double application since residuals very small (due to lightening of target img)
-
+    
+    ACCURACY:
     - consider spill
-    - "lookahead" to consider spill with full information
-
-    - how much can combo set be reduced with representatives?
-    - measure similarity between combos, this could be done with ANN
-    - loop through combos matching constraints and check distance to chosen representative
-    - surely representatives must help less and less as the constraints increase?
-    - would random (or partly random) sampling be more useful that representatives for when few constraints?
-    - put bounds on error so that we can stop comparing when we found something good enough
+     - "lookahead" to consider spill with full information
+    
+    PERFORMANCE:
+    - how much can combo set be reduced with representatives / bins?
+     - measure similarity between combos, this could be done with ANN
+     - loop through combos matching constraints and check distance to chosen representative
+     - surely representatives help less and less as the constraints increase?
+     - would random (or partly random) sampling be more useful that representatives for when few constraints?
+     - put bounds on error so that we can stop comparing when we found something good enough
 
     Eventually:
     - GUI
@@ -599,3 +601,11 @@ More results:
     - Shrink of 8 yields 2x4 which is a decent approximation
     - For shrinking: INTER_AREA is good. All others are bad
     - Shrinking changes things, not necessarily better or worse (between 1 and 8)
+- Dither is a mixed bag
+ - TODO Something is broken... see _wtf.png
+- Prioritization improved by blurring the Sobel filtered image before summing slices
+- Overall the results are worse than using the ANN
+ - TODO: Update ANN selector to work with new interface (swappable)
+
+ TODO:
+ - show results as image is being generated (for fun, debugging)

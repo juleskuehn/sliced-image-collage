@@ -42,7 +42,7 @@ def brightenTarget(im, comboSet, amount):
     print(minCombo)
     imBlack = 0 # Could test target image for this, or just leave as 0
     diff = (minCombo - imBlack) * amount
-    return im * (255-diff)/255 + diff
+    return np.array(im * (255-diff)/255 + diff, dtype='uint8')
 
 
 # Returns a mockup image, with the same size as the target image
