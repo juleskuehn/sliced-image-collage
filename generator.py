@@ -67,7 +67,7 @@ class Generator:
         residual = 0
         h, w = self.comboGrid.rows, self.comboGrid.cols
         K = 2.6 # Hyperparam
-        M = 3   # Mask size
+        M = 7   # Mask size
         c = M//2
         numPixels = targetImgSlice.shape[0] * targetImgSlice.shape[1]
 
