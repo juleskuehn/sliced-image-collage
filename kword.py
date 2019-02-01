@@ -35,7 +35,7 @@ targetImg = args[2]
 slicesX = int(args[3])
 slicesY = int(args[4])
 rowLength = int(args[5])
-shapeliness = float(args[6])
+c = int(args[6])
 shrink = int(args[7])
 
 target = cv2.imread(targetImg, cv2.IMREAD_GRAYSCALE)
@@ -46,36 +46,18 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     fn=sourceImg, numX=slicesX, numY=slicesY, startX=0, startY=0,
     xPad=0, yPad=0, shrink=shrink, blankSpace=True)
 
-"""     # 8: 0
-    # 9: -
-    # 10: =
-    # 19: o
-    # 21: 1/2
-    # 30: k
-    # 33: `
-    # 35: x
-    # 41: ,
-    # 44: #
-    # 45: $
-    # 47: _
-    # 48: &
-    # 49: '
-    # 50: (
-    # 51: )
-    # 65: @
-    # 71: H
-    # 75: :
-    # 76: ^
-    # 78: X
-    # 84: ?
-    # 86: c with thing
-    # 87: .
-    # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,85,86,-1]]
-    # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,49,50,51,52,65,71,75,76,78,83,84,85,86,-1]] """
-numChars = 5
-randomCharIdx = list(np.random.choice(len(cropped)-1, numChars))
-# bestChars = cropped[[-1] + randomCharIdx] # Blank space always first
-bestChars = cropped[[-1,8,65,44,19,33,75,87,37,16]]
+
+sortedCropIdx = np.argsort([np.average(char) for char in cropped])[::-1]
+print(sortedCropIdx)
+m = len(sortedCropIdx)//2 - c//2
+chooseThese = list(sortedCropIdx[:c])+list(sortedCropIdx[m:m+c])+list(sortedCropIdx[-c:])
+bestChars = cropped[chooseThese]
+# randomCharIdx = list(np.random.choice(len(cropped)-1, numChars))
+import os
+d = os.getcwd() + '\\chars'
+filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
+for f in filesToRemove:
+    os.remove(f) 
 for i, char in enumerate(bestChars):
     cv2.imwrite('chars/char_'+str(i+1)+'.png', char)
 
@@ -91,15 +73,16 @@ comboSet = ComboSet(CharSet(bestChars))
 resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0].img.shape, (xChange, yChange))
 
 # cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
-resizedTarget = brightenTarget(resizedTarget, comboSet)
+brightenAmount = 1
+resizedTarget = brightenTarget(resizedTarget, comboSet, brightenAmount)
 
-generator = Generator(resizedTarget, comboSet, shapeliness=shapeliness)
+generator = Generator(resizedTarget, comboSet)
 filledComboGrid = generator.generatePriorityOrder()
 
 # # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(filledComboGrid, comboSet, target.shape, targetPadding)
 
-mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_shape{shapeliness}_shrink{shrink}.png"
+mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_c{c}_shrink{shrink}.png"
 print("writing file:")
 print(mockupFn)
 cv2.imwrite(mockupFn, m)

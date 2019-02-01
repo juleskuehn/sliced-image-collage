@@ -37,11 +37,11 @@ def resizeTarget(im, rowLength, charShape, charChange):
     return im, newHeight-outHeight
 
 
-def brightenTarget(im, comboSet):
+def brightenTarget(im, comboSet, amount):
     minCombo = np.min([np.average(combo.img) for combo in comboSet.byIdx])
     print(minCombo)
     imBlack = 0 # Could test target image for this, or just leave as 0
-    diff = minCombo - imBlack
+    diff = (minCombo - imBlack) * amount
     return im * (255-diff)/255 + diff
 
 
@@ -131,8 +131,7 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     startY = int(startY*newStepY)  # Crop top px
 
     # Hidden hyperparameter
-    whiteThreshold = 0.99 # Don't save images that are virtually empty
-
+    whiteThreshold = 0.95 # Don't save images that are virtually empty
     tiles = []
 
     for y in range(startY, im.shape[0], newStepY):

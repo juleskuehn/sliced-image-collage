@@ -561,19 +561,21 @@ We can further speed up the selection when using SSIM (or another selector which
 
 Todo:
     - contrast matching
-    - DONE
+     - DONE (source compared to true black, not to target image)
 
     - prioritize selection order
-    - DONE (laplace, seems good enough)
+     - DONE (laplace, seems good enough)
 
     - selector using SSIM, MSE
     - constraint based selection (4d array of combos)
-    - DONE but slow as hell
-        SSIM is useless on a very small window (subslice)
+     - DONE but slow as hell
+      - SSIM is useless on a very small window (subslice)
 
     - dither (Li)
-    - allows for priority selection
-    - can do "double application" of dither, and/or track residuals
+     - allows for priority selection
+     - DONE
+     - DONE can do "double application" of dither, and/or track residuals
+        - no need for double application since residuals very small (due to lightening of target img)
 
     - consider spill
     - "lookahead" to consider spill with full information

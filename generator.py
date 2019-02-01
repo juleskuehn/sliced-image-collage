@@ -19,19 +19,35 @@ class Generator:
         self.comboGrid = ComboGrid(self.rows, self.cols)
         self.selector = Selector(self.comboSet)
         self.shapeliness = shapeliness
+        self.ditherResidual = 0
 
 
-    def putBest(self, row, col):
-        startY = row * self.comboH
+    def getSliceBounds(self, row, col):
+        startY = row * self.comboH  
         startX = col * self.comboW
         endY = (row+1) * self.comboH
         endX = (col+1) * self.comboW
+        return startX, startY, endX, endY
+
+
+    def putBest(self, row, col):
+        startX, startY, endX, endY = self.getSliceBounds(row, col)
+
+        # Attempt to apply residual
+        beforeVal = np.average(self.targetImg[startY:endY, startX:endX])
+        desiredVal = beforeVal + self.ditherResidual
+        self.targetImg[startY:endY, startX:endX] = cv2.add(
+            self.targetImg[startY:endY, startX:endX], self.ditherResidual)
+        afterVal = np.average(self.targetImg[startY:endY, startX:endX])
+        self.ditherResidual = desiredVal - afterVal
+        # print(self.ditherResidual)
+
+        # Find best match
         targetImgSlice = self.targetImg[startY:endY, startX:endX]
-        
         constraints = self.comboGrid.get(row, col)
         bestMatch = self.selector.bestMSE(targetImgSlice, constraints)
         self.comboGrid.put(row, col, bestMatch)
-        self.applyDither(row, col, targetImgSlice)
+        self.applyDither(row, col)
 
 
     def generatePriorityOrder(self):
@@ -43,12 +59,10 @@ class Generator:
             d = {}
             for row in range(self.rows):
                 for col in range(self.cols):
-                    startY = row * self.comboH  
-                    startX = col * self.comboW
-                    endY = (row+1) * self.comboH
-                    endX = (col+1) * self.comboW
+                    startX, startY, endX, endY = self.getSliceBounds(row, col)
                     targetSlice = laplacian[startY:endY, startX:endX]
                     d[(row, col)] = np.sum(targetSlice)
+            # print(d)
             return sorted(d, key=d.get, reverse=False)
 
         priorityPositions = calcPriorityPositions()
@@ -63,18 +77,21 @@ class Generator:
             
         return self.comboGrid
 
-    def applyDither(self, row, col, targetImgSlice):
-        residual = 0
+
+    # Applies dither *around* comboGrid[row, col] when that slice has already been chosen
+    def applyDither(self, row, col):
         h, w = self.comboGrid.rows, self.comboGrid.cols
         K = 2.6 # Hyperparam
-        M = 7   # Mask size
+        M = 3   # Mask size
         c = M//2
-        numPixels = targetImgSlice.shape[0] * targetImgSlice.shape[1]
 
+        startX, startY, endX, endY = self.getSliceBounds(row, col)
+        
         # Calculate error between chosen combo and target subslice
-        actual = np.sum(self.comboSet.byCombo[self.comboGrid.get(row, col)].img)
-        target = np.sum(targetImgSlice) + residual
-        error = (target - actual) / numPixels
+        actual = np.average(self.comboSet.byCombo[self.comboGrid.get(row, col)].img)
+        target = np.average(self.targetImg[startY:endY, startX:endX])
+        
+        error = target - actual
         # print(error)
         
         # Get adjacent subslices which aren't chosen already, checking bounds
@@ -87,11 +104,8 @@ class Generator:
 
         weightIdx = []
         for i, j, dist in adjIdx:
-            startY = i * self.comboH  
-            startX = j * self.comboW
-            endY = (i+1) * self.comboH
-            endX = (j+1) * self.comboW
-            adjVal = np.sum(self.targetImg[startY:endY, startX:endX]) / numPixels
+            startX, startY, endX, endY = self.getSliceBounds(i, j)
+            adjVal = np.average(self.targetImg[startY:endY, startX:endX])
             # Darken slices which are already darker, and vice-versa
             # Affect closer slices more
             weight = (adjVal if error > 0 else 255 - adjVal) / (dist**K)
@@ -102,14 +116,11 @@ class Generator:
             # Normalize weights since not all slices will be adjustable
             weight /= totalWeight
             # Overall we want to reach this level with the slice:
-            desiredVal = beforeVal + error*weight + residual
+            desiredVal = beforeVal + error*weight + self.ditherResidual
             # Apply corrections per pixel
             correction = (desiredVal - beforeVal)
-            startY = i * self.comboH  
-            startX = j * self.comboW
-            endY = (i+1) * self.comboH
-            endX = (j+1) * self.comboW
+            startX, startY, endX, endY = self.getSliceBounds(i, j)
             self.targetImg[startY:endY, startX:endX] = cv2.add(self.targetImg[startY:endY, startX:endX], correction)
-            afterVal = np.sum(self.targetImg[startY:endY, startX:endX]) / numPixels
-            # residual = desiredVal - afterVal
+            afterVal = np.average(self.targetImg[startY:endY, startX:endX])
+            self.ditherResidual = desiredVal - afterVal
             # print(beforeVal, desiredVal - afterVal)
