@@ -72,22 +72,25 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
     # 87: .
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,85,86,-1]]
     # bestChars = cropped[[0,6,8,9,10,16,19,21,30,33,35,36,37,38,41,42,43,44,45,46,47,48,49,50,51,52,65,71,75,76,78,83,84,85,86,-1]] """
-bestChars = cropped[[-1, 9, 78, 76, 33, 84, 75, 30, 86, 38, 7, 45, 50, 51, 71, 10, 87, 8, 19, 65, 33, 35, 44, 49, 75]] # Blank space always first
+numChars = 5
+randomCharIdx = list(np.random.choice(len(cropped)-1, numChars))
+# bestChars = cropped[[-1] + randomCharIdx] # Blank space always first
+bestChars = cropped[[-1,8,65,37,16]]
 for i, char in enumerate(bestChars):
     cv2.imwrite('chars/char_'+str(i+1)+'.png', char)
 
-comboSet = ComboSet(len(bestChars), charset=CharSet(bestChars))
+comboSet = ComboSet(CharSet(bestChars))
 
 # cv2.imwrite('combo_first.png', comboSet.byIdx[0].img)
 # cv2.imwrite('combo_last.png', comboSet.byIdx[-1].img)
 
-# for combo in comboSet.byIdx:
-#     cv2.imwrite('combo_'+str(combo.idx)+'.png', combo.img)
+for combo in comboSet.byIdx:
+    cv2.imwrite('combos/combo_'+str(combo.idx)+'.png', combo.img)
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
 resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0].img.shape, (xChange, yChange))
 
-cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
+# cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
 resizedTarget = brightenTarget(resizedTarget, comboSet)
 
 generator = Generator(resizedTarget, comboSet, shapeliness=shapeliness)

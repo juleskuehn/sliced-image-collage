@@ -36,33 +36,28 @@ class Combo:
 
         return np.array(img * 255, dtype='uint8')
 
-    def matchesConstraints(self, constraints):
-        return ((self.TL == constraints.TL or constraints.TL == None)
-            and (self.TR == constraints.TR or constraints.TR == None)
-            and (self.BL == constraints.BL or constraints.BL == None)
-            and (self.BR == constraints.BR or constraints.BR == None))
-
-    def isFull(self):
-        return np.all([self.TL, self.TR, self.BL, self.BR])
-
 
 class ComboSet:
     # Container class with useful methods
     # Stores Combos in 4D Array for easy filtering by constraint
     # Also in a list by indices of the ANN model
-    def __init__(self, numChars=0, charset=None):
+    def __init__(self, charSet):
         self.byIdx = []
         self.byCombo = {}
-        self.arr4d = [] # TODO
-        self.numChars = numChars or len(charset)
-        self.size = numChars**4
+        self.numChars = len(charSet.chars)
+        n = self.numChars
+        self.byChars = np.empty((n+1,n+1,n+1,n+1), dtype=object)
+        self.size = n**4
         i = 0
-        for a in range(1, numChars + 1):
-            for b in range(1, numChars + 1):
-                for c in range(1, numChars + 1):
-                    for d in range(1, numChars + 1):
-                        combo = Combo(a,b,c,d,idx=i,charset=charset)
+        for a in range(1, n + 1):
+            for b in range(1, n + 1):
+                for c in range(1, n + 1):
+                    for d in range(1, n + 1):
+                        combo = Combo(a,b,c,d,idx=i,charset=charSet)
                         self.byIdx.append(combo)
                         self.byCombo[combo] = combo
+                        self.byChars[a,b,c,d] = combo
                         i += 1
+
+        # [print(combo) for combo in self.byChars[1,1,1,:]]
         print("Generated", i, "combos.")

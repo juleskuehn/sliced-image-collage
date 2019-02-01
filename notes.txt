@@ -560,25 +560,39 @@ As the number of subslices under consideration grows, the number of comparisons 
 We can further speed up the selection when using SSIM (or another selector which is compatible with constraining the comparisons) by using representatives. This could reduce the size of the character set further (unclear how much - need to investigate).
 
 Todo:
-- contrast matching
- - DONE
+    - contrast matching
+    - DONE
 
-- prioritize selection order
- - DONE (laplace, seems good enough)
+    - prioritize selection order
+    - DONE (laplace, seems good enough)
 
-- selector using SSIM, MSE
- - constraint based selection (4d array of combos)
+    - selector using SSIM, MSE
+    - constraint based selection (4d array of combos)
+    - DONE but slow as hell
+        SSIM is useless on a very small window (subslice)
 
-- consider spill
- - "lookahead" to consider spill with full information
+    - dither (Li)
+    - allows for priority selection
+    - can do "double application" of dither, and/or track residuals
 
-- how much can combo set be reduced with representatives?
- - measure similarity between combos, this could be done with ANN
- - loop through combos matching constraints and check distance to chosen representative
- - surely representatives must help less and less as the constraints increase?
- - would random (or partly random) sampling be more useful that representatives for when few constraints?
- - put bounds on error so that we can stop comparing when we found something good enough
+    - consider spill
+    - "lookahead" to consider spill with full information
 
-Eventually:
-- GUI
-- High res rendering (from original charset)
+    - how much can combo set be reduced with representatives?
+    - measure similarity between combos, this could be done with ANN
+    - loop through combos matching constraints and check distance to chosen representative
+    - surely representatives must help less and less as the constraints increase?
+    - would random (or partly random) sampling be more useful that representatives for when few constraints?
+    - put bounds on error so that we can stop comparing when we found something good enough
+
+    Eventually:
+    - GUI
+    - High res rendering (from original charset)
+
+
+More results:
+- Shrinking:
+    - Should probably do *after* combos generated (TODO along with hi-res rendering)
+    - Shrink of 16 is too much (produces a subslice only 1x2 pixels - vs 2x2 used in 2016 version)
+    - Shrink of 8 yields 2x4 which is a decent approximation
+    - For shrinking: INTER_AREA is good. All others are bad

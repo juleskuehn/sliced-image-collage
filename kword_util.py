@@ -22,7 +22,7 @@ def resizeTarget(im, rowLength, charShape, charChange):
     outWidth = rowLength * charWidth
     outHeight = round((outWidth / inWidth) * inHeight * (xChange/yChange))
     im = cv2.resize(im, dsize=(outWidth, outHeight),
-                    interpolation=cv2.INTER_CUBIC)
+                    interpolation=cv2.INTER_AREA )
     print("resized target has shape", im.shape)
     # Pad outHeight so that it aligns with a character boundary
     if outHeight % charHeight != 0:
@@ -53,13 +53,14 @@ def genMockup(comboGrid, comboSet, targetShape, targetPadding):
     mockup = np.zeros((gridShape[0]*comboShape[0],
                        gridShape[1]*comboShape[1]), dtype='uint8')
 
+    # print(comboGrid)
     for i, row in enumerate(comboGrid.grid):
         startY = i * comboShape[0]
         endY = (i + 1) * comboShape[0]
         for j, combo in enumerate(row):
             startX = j * comboShape[1]
             endX = (j + 1) * comboShape[1]
-            mockup[startY:endY,startX:endX] = combo.img
+            mockup[startY:endY,startX:endX] = comboSet.byCombo[combo].img
 
 
     # Crop and resize mockup to match target image
@@ -67,7 +68,7 @@ def genMockup(comboGrid, comboSet, targetShape, targetPadding):
         mockup = mockup[:-targetPadding, :]
         print("cropped to", mockup.shape)
     # return mockup
-    resized = cv2.resize(mockup, dsize=(targetShape[1],targetShape[0]), interpolation=cv2.INTER_CUBIC)
+    resized = cv2.resize(mockup, dsize=(targetShape[1],targetShape[0]), interpolation=cv2.INTER_AREA)
     print("mockup has shape", resized.shape)
     return resized
 
@@ -119,7 +120,7 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     xChange = stepX / newStepX
     yChange = stepY / newStepY
 
-    im = cv2.resize(im, dsize=(newStepX * numX, newStepY * numY), interpolation=cv2.INTER_CUBIC)
+    im = cv2.resize(im, dsize=(newStepX * numX, newStepY * numY), interpolation=cv2.INTER_AREA)
     print(np.max(im))
     print("Actual character size", stepX, stepY)
     print("Resized char size", newStepX, newStepY)

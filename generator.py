@@ -1,7 +1,7 @@
 import numpy as np
 import operator
 
-from selector import Selector
+from selector_mse_ssim import Selector
 from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
@@ -21,66 +21,24 @@ class Generator:
         self.shapeliness = shapeliness
 
 
-    # Selects source slice (index) with lowest MSE vs target slice
-    def getBest(self, row, col):
-
-        constraints = self.comboGrid.getConstraints(row, col)
-
-        def fitsConstraints(comboIdx):
-            combo = self.comboSet.byIdx[comboIdx]
-            return combo.matchesConstraints(constraints)
-
+    def putBest(self, row, col):
         startY = row * self.comboH
         startX = col * self.comboW
         endY = (row+1) * self.comboH
         endX = (col+1) * self.comboW
-
         targetImgSlice = self.targetImg[startY:endY, startX:endX]
-        scoredCombos = self.selector.getSimilar(targetImgSlice, self.shapeliness)
-
-        bestScore = 1
-        bestComboIdx = None
-
-        for key in scoredCombos:
-            if fitsConstraints(key) and scoredCombos[key] < bestScore:
-                bestScore = scoredCombos[key]
-                bestComboIdx = key
         
-        return bestComboIdx
+        constraints = self.comboGrid.grid[row, col]
+        bestMatch = self.selector.bestMSE(targetImgSlice, constraints)
+        self.comboGrid.put(row, col, bestMatch)
 
-    def putBest(self, row, col):
-        self.comboGrid.put(row, col, self.comboSet.byIdx[self.getBest(row, col)])
-        # self.comboGrid.grid[row, col] = self.comboSet.byIdx[self.getBest(row, col)]
-
-
-    # TODO combine generate____Order into parameterized function
-    def generateLinearOrder(self):
-        for row in range(self.rows):
-            for col in range(self.cols):
-                constraints = self.comboGrid.getConstraints(row, col)
-                if constraints.isFull():
-                    self.comboGrid.grid[row, col] = self.comboSet.byCombo[constraints]
-                    continue
-                self.putBest(row, col)
-        return self.comboGrid
-
-    def generateRandomOrder(self):
-        randomPositions = [(row, col)
-                            for row in range(self.rows)
-                            for col in range(self.cols)]
-        np.random.shuffle(randomPositions)
-        for row, col in randomPositions:
-            constraints = self.comboGrid.getConstraints(row, col)
-            if constraints.isFull():
-                self.comboGrid.grid[row, col] = self.comboSet.byCombo[constraints]
-                continue
-            self.putBest(row, col)
-        return self.comboGrid
 
     def generatePriorityOrder(self):
 
         def calcPriorityPositions():
             laplacian = cv2.Laplacian(self.targetImg,cv2.CV_64F)
+            cv2.imwrite('laplace.png', laplacian)
+
             d = {}
             for row in range(self.rows):
                 for col in range(self.cols):
@@ -95,13 +53,11 @@ class Generator:
         priorityPositions = calcPriorityPositions()
         i = 0
         for row, col in priorityPositions:
+            # print(self.comboGrid)
             # i += 1
             # if i > 200:
             #     self.comboGrid.grid[row, col] = self.comboSet.byCombo[Combo(1,1,1,1)]
             #     continue
-            constraints = self.comboGrid.getConstraints(row, col)
-            if constraints.isFull():
-                self.comboGrid.grid[row, col] = self.comboSet.byCombo[constraints]
-                continue
             self.putBest(row, col)
+            
         return self.comboGrid
