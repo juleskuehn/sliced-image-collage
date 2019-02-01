@@ -107,7 +107,7 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     stepY = im.shape[0]/numY  # Slice height
 
     # Need to resize charset such that stepX and stepY are each multiples of 2
-    # Also shrinking while we're at it
+    # After this, we can shrink without loss of proportion
     # shrinkFactor = 2
     newStepX = ceil(stepX/shrink)
     newStepY = ceil(stepY/shrink)

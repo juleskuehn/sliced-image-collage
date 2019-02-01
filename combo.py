@@ -36,6 +36,9 @@ class Combo:
 
         return np.array(img * 255, dtype='uint8')
 
+    def isDone(self):
+        return np.all([self.TL, self.TR, self.BL, self.BR])
+
 
 class ComboSet:
     # Container class with useful methods

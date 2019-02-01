@@ -75,7 +75,7 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
 numChars = 5
 randomCharIdx = list(np.random.choice(len(cropped)-1, numChars))
 # bestChars = cropped[[-1] + randomCharIdx] # Blank space always first
-bestChars = cropped[[-1,8,65,37,16]]
+bestChars = cropped[[-1,8,65,44,19,33,75,87,37,16]]
 for i, char in enumerate(bestChars):
     cv2.imwrite('chars/char_'+str(i+1)+'.png', char)
 
@@ -84,8 +84,8 @@ comboSet = ComboSet(CharSet(bestChars))
 # cv2.imwrite('combo_first.png', comboSet.byIdx[0].img)
 # cv2.imwrite('combo_last.png', comboSet.byIdx[-1].img)
 
-for combo in comboSet.byIdx:
-    cv2.imwrite('combos/combo_'+str(combo.idx)+'.png', combo.img)
+# for combo in comboSet.byIdx:
+#     cv2.imwrite('combos/combo_'+str(combo.idx)+'.png', combo.img)
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
 resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0].img.shape, (xChange, yChange))

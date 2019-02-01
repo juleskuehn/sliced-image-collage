@@ -27,6 +27,10 @@ class ComboGrid:
             combo.BR = 1
 
 
+    def get(self, row, col):
+        return self.grid[row, col]
+
+
     def put(self, row, col, combo):
         self.grid[row, col] = Combo(combo.TL, combo.TR, combo.BL, combo.BR)
         # print(self)

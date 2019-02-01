@@ -596,3 +596,4 @@ More results:
     - Shrink of 16 is too much (produces a subslice only 1x2 pixels - vs 2x2 used in 2016 version)
     - Shrink of 8 yields 2x4 which is a decent approximation
     - For shrinking: INTER_AREA is good. All others are bad
+    - Shrinking changes things, not necessarily better or worse (between 1 and 8)
