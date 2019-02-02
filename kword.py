@@ -92,3 +92,8 @@ print(mockupFn)
 
 # cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(m,0.5,target,0.5,0))
 cv2.imwrite(mockupFn+'.png', m)
+
+# ax1 = plt.subplot(111)
+# #create image plot
+# im1 = ax1.imshow(m,cmap='gray')
+# plt.show()

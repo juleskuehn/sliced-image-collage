@@ -1,22 +1,27 @@
 import numpy as np
 import operator
 import timeit
+import cv2
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 from selector_mse_ssim import Selector
 from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
-import cv2
+from kword_util import genMockup
 
 class Generator:
 
     # Assumes targetImg has already been resized and padded to match combo dimensions
-    def __init__(self, targetImg, comboSet, shapeliness=0.5):
+    def __init__(self, targetImg, comboSet, shapeliness=0.5, targetShape=None, targetPadding=None):
         self.targetImg = targetImg
         self.comboSet = comboSet
         self.comboH, self.comboW = comboSet.byIdx[0].img.shape
         self.rows = targetImg.shape[0] // self.comboH
         self.cols = targetImg.shape[1] // self.comboW
+        self.targetShape = targetShape or targetImg.shape
+        self.targetPadding = targetPadding or 0
         self.comboGrid = ComboGrid(self.rows, self.cols)
         self.selector = Selector(self.comboSet)
         self.shapeliness = shapeliness
@@ -81,16 +86,52 @@ class Generator:
         return sorted(d, key=d.get, reverse=False)
 
 
-    def generatePriorityOrder(self):
+    def generatePriorityOrder(self, preview=True):
+        def genM():
+            return genMockup(self.comboGrid, self.comboSet, self.targetShape, self.targetPadding)
+        
         priorityPositions = self.calcPriorityPositions()
-        i = 0
-        for row, col in priorityPositions:
-            # print(self.comboGrid)
-            # i += 1
-            # if i > 200:
-            #     self.comboGrid.get(row, col) = self.comboSet.byCombo[Combo(1,1,1,1)]
-            #     continue
+
+        # for row, col in priorityPositions:
+        #     self.putBest(row, col)
+        #     if preview:
+        #         #create image plot
+        #         im1 = ax1.imshow(genM(),cmap='gray')
+        #         plt.show()
+
+        fig = plt.figure(frameon=False)
+        fig.set_size_inches(5,5)
+        ax1 = plt.Axes(fig, [0., 0., 1., 1.])
+        ax1.set_axis_off()
+        fig.add_axes(ax1)
+        ax1.get_xaxis().set_visible(False)
+        ax1.get_yaxis().set_visible(False)
+        ax1.axis('off')
+        fig.subplots_adjust(bottom = 0)
+        fig.subplots_adjust(top = 1)
+        fig.subplots_adjust(right = 1)
+        fig.subplots_adjust(left = 0)
+
+        def gen():
+            while len(priorityPositions) > 0:
+                yield 0
+
+        def animate(frame):
+            row, col = priorityPositions.pop()
             self.putBest(row, col)
+            ax1.clear()
+            ax1.imshow(genM(),cmap='gray')
+
+        if preview:
+            # Set up formatting for the movie files
+            Writer = animation.writers['ffmpeg']
+            writer = Writer(fps=10, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
+            ani = animation.FuncAnimation(fig, animate, frames=gen, interval=1)
+            # ani.save('animation.mp4', writer=writer)
+            plt.show()
+        else:
+            for row, col in priorityPositions:
+                self.putBest(row, col)
         
         print(self.times)
         print(self.comboGrid)

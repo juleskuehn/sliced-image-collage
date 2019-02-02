@@ -11,6 +11,8 @@ from math import inf, floor, ceil
 from skimage.measure import compare_ssim, compare_mse, compare_nrmse, compare_psnr
 import operator
 
+from combo import Combo
+
 
 # Resizes targetImg to be a multiple of character width
 # Scales height to correct for change in proportion
@@ -60,16 +62,21 @@ def genMockup(comboGrid, comboSet, targetShape, targetPadding):
         for j, combo in enumerate(row):
             startX = j * comboShape[1]
             endX = (j + 1) * comboShape[1]
-            mockup[startY:endY,startX:endX] = comboSet.byCombo[combo].img
-
+            if not combo in comboSet.byCombo:
+                TL = combo.TL or 1
+                TR = combo.TR or 1
+                BL = combo.BL or 1
+                BR = combo.BR or 1
+                combo = Combo(TL,TR,BL,BR)
+            mockup[startY:endY,startX:endX] = comboSet.byCombo[combo].img    
 
     # Crop and resize mockup to match target image
     if targetPadding > 0:
         mockup = mockup[:-targetPadding, :]
-        print("cropped to", mockup.shape)
+        # print("cropped to", mockup.shape)
     # return mockup
     resized = cv2.resize(mockup, dsize=(targetShape[1],targetShape[0]), interpolation=cv2.INTER_AREA)
-    print("mockup has shape", resized.shape)
+    # print("mockup has shape", resized.shape)
     return resized
 
 
