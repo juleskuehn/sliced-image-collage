@@ -559,6 +559,8 @@ As the number of subslices under consideration grows, the number of comparisons 
 
 We can further speed up the selection when using SSIM (or another selector which is compatible with constraining the comparisons) by using representatives. This could reduce the size of the character set further (unclear how much - need to investigate).
 
+2019-01-31
+
 Todo:
     - contrast matching
      - DONE (source compared to true black, not to target image)
@@ -594,6 +596,8 @@ Todo:
     - High res rendering (from original charset)
 
 
+2019-02-01
+
 More results:
 - Shrinking:
     - Should probably do *after* combos generated (TODO along with hi-res rendering)
@@ -605,7 +609,39 @@ More results:
  - TODO Something is broken... see _wtf.png
 - Prioritization improved by blurring the Sobel filtered image before summing slices
 - Overall the results are worse than using the ANN
- - TODO: Update ANN selector to work with new interface (swappable)
+- blending angular distance (of flattened vector) with MSE helps?
 
- TODO:
+TODO:
  - show results as image is being generated (for fun, debugging)
+    - DONE! Bugs found and fixed. Order of evaluation of array indices.. ugh
+ - Consider spill (how?)
+    - Needs to be done ASAP because other 
+ - Update ANN selector to work with new interface (swappable)
+    - Generic selector with many options
+        - Priority: linear, alternating scan, random, priority, inner->outer, outer->inner, vertical, or specify priority in matrix of combogrid size
+        - MSE, SSIM, Angular, Euclidean-ANN, Angular-ANN, AvgLevel
+            - Or blend between
+ - Fix Dither bug (?)
+ - Fix preview bug (?)
+ - Bins / representatives
+ - Bounds for error
+ - Multiple passes
+ - A* selection, etc (move outward from seed points)
+
+
+Actually... dead ending with this combo selection.
+Basically, it is selecting 4 characters at one time.
+The only way this could be good is if it looks at the area under all 4 characters
+    - store a larger image, and compare that: better, but incomplete information when constraints already imposed (ie, when this 4 character chunk overlaps with already chosen chars)
+    - OR composite on the fly: could be additionally to pre-composited combos, when there are more overlaps (wouldn't take so long to composite when there are fewer characters to choose - and can composite over closest existing combo)
+    - each of these strategies looks at 9 subslices
+Another approach would be to look at 4 subslices (quadrants), under 1 chosen character.
+    - need to think about this, seems like a LOT of combos.
+
+A compeletely new path would return to the simplicity of selecting one character at a time, rather than 4.
+- Simplest sanity test: go back to angular NN one layer version
+ - Do 4 passes, choosing the best single character on each pass
+ - Can composite as you go, or just treat each layer independently
+
+Benefits: Angular selection is more likely to commit "sins of omission" rather than "sins of comission" which is preferable especially for this strategy.
+ - Subsequent passes could focus on a different metric (improving shading, dither...)

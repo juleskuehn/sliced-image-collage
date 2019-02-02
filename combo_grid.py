@@ -32,6 +32,11 @@ class ComboGrid:
 
 
     def put(self, row, col, combo):
+        if (self.grid[row, col].TL and self.grid[row, col].TL != combo.TL
+        or self.grid[row, col].TR and self.grid[row, col].TR != combo.TR
+        or self.grid[row, col].BL and self.grid[row, col].BL != combo.BL
+        or self.grid[row, col].BR and self.grid[row, col].BR != combo.BR):
+            print("err!!!", self.grid[row,col], '!=', combo)
         self.grid[row, col] = Combo(combo.TL, combo.TR, combo.BL, combo.BR)
         # print(self)
         if col > 0:

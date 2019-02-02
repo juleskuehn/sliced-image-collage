@@ -9,17 +9,27 @@ class Selector:
         self.comboSet = comboSet
         self.comboH, self.comboW = comboSet.byIdx[0].img.shape
 
+    
+
 
     def bestMSE(self, targetImgSlice, constraints):
-        
-        TL = constraints.TL
-        TR = constraints.TR
-        BL = constraints.BL
-        BR = constraints.BR
+        def unit_vector(vector):
+            return vector / np.linalg.norm(vector)
+
+        def angle_between(v1, v2):
+            v1_u = unit_vector(v1)
+            v2_u = unit_vector(v2)
+            return np.arccos(np.clip(np.dot(v1_u.flatten(), v2_u.flatten()), -1.0, 1.0))
+
+        # print('cons:',constraints)
         
         # Get slice of combos that are valid for these constraints
-        validCombos = self.comboSet.byChars[TL, TR, BL, BR]
-
+        validCombos = self.comboSet.byChars[
+            constraints.TL or None:constraints.TL+1 if constraints.TL else None,
+            constraints.TR or None:constraints.TR+1 if constraints.TR else None,
+            constraints.BL or None:constraints.BL+1 if constraints.BL else None,
+            constraints.BR or None:constraints.BR+1 if constraints.BR else None]
+        # [print(combo) for combo in validCombos.flatten()]
         # If only one slice is valid, we're done.
         if type(validCombos) == Combo:
             bestCombo = validCombos
@@ -28,19 +38,21 @@ class Selector:
             #     print("error!!!!")
         # Otherwise, find the best
         else:
+            div = targetImgSlice.shape[0]*targetImgSlice.shape[1]*64
             # print(len(validCombos.flatten()), "combos valid here")
             bestCombo = None
-            bestScore = inf
+            bestErr = inf
             for combo in validCombos.flatten():
                 if combo is None:
                     continue
-                score = compare_mse(combo.img, targetImgSlice)
-                # score = 10
-                if score < bestScore:
+                err = compare_mse(combo.img, targetImgSlice)/div
+                # print(err)
+                err += angle_between(combo.img, targetImgSlice)
+                # print(err,'with angle')
+                if err < bestErr:
                     bestCombo = combo
-                    bestScore = score
-        # print(constraints)
-        # print(bestCombo)
+                    bestErr = err
+        # print('best:',bestCombo)
         # print('')
         return bestCombo
 

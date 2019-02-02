@@ -37,6 +37,8 @@ slicesY = int(args[4])
 rowLength = int(args[5])
 c = int(args[6])
 shrink = int(args[7])
+dither = 'dither' in args
+preview = 'preview' in args
 
 target = cv2.imread(targetImg, cv2.IMREAD_GRAYSCALE)
 print("target photo has shape", target.shape)
@@ -50,16 +52,18 @@ cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
 sortedCropIdx = np.argsort([np.average(char) for char in cropped])[::-1]
 print(sortedCropIdx)
 m = len(sortedCropIdx)//2 - c//2
-chooseThese = list(sortedCropIdx[:c])+list(sortedCropIdx[m:m+c])+list(sortedCropIdx[-c:])
+chooseThese = list(sortedCropIdx[:c])+list(sortedCropIdx[m:m+c])+list(sortedCropIdx[-c:])+[6, 8, 19, 75]
 bestChars = cropped[chooseThese]
 # randomCharIdx = list(np.random.choice(len(cropped)-1, numChars))
-import os
-d = os.getcwd() + '\\chars'
-filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
-for f in filesToRemove:
-    os.remove(f) 
-for i, char in enumerate(bestChars):
-    cv2.imwrite('chars/char_'+str(i+1)+'.png', char)
+
+# # Save characters
+# import os
+# d = os.getcwd() + '\\chars'
+# filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
+# for f in filesToRemove:
+#     os.remove(f) 
+# for i, char in enumerate(cropped):
+#     cv2.imwrite('chars/char_'+str(i)+'.png', char)
 
 comboSet = ComboSet(CharSet(bestChars))
 
@@ -77,16 +81,16 @@ brightenAmount = 1
 resizedTarget = brightenTarget(resizedTarget, comboSet, brightenAmount)
 print(resizedTarget.dtype)
 
-generator = Generator(resizedTarget, comboSet)
+generator = Generator(resizedTarget, comboSet, targetShape=target.shape, targetPadding=targetPadding, dither=dither)
 cv2.imwrite('lapTest.png', generator.testPriorityOrder())
 
 
-filledComboGrid = generator.generatePriorityOrder()
+filledComboGrid = generator.generatePriorityOrder(preview=preview)
 
 # # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(filledComboGrid, comboSet, target.shape, targetPadding)
 
-mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_c{c}_shrink{shrink}"
+mockupFn = f"mockup/mockup_{sourceImg.split('.')[-2][1:]}_{targetImg.split('.')[-2][1:]}_{rowLength}w_c{c}_shrink{shrink}_{dither}"
 print("writing file:")
 print(mockupFn)
 

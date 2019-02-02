@@ -14,7 +14,7 @@ from kword_util import genMockup
 class Generator:
 
     # Assumes targetImg has already been resized and padded to match combo dimensions
-    def __init__(self, targetImg, comboSet, shapeliness=0.5, targetShape=None, targetPadding=None):
+    def __init__(self, targetImg, comboSet, shapeliness=0.5, targetShape=None, targetPadding=None, dither=True):
         self.targetImg = targetImg
         self.comboSet = comboSet
         self.comboH, self.comboW = comboSet.byIdx[0].img.shape
@@ -25,6 +25,7 @@ class Generator:
         self.comboGrid = ComboGrid(self.rows, self.cols)
         self.selector = Selector(self.comboSet)
         self.shapeliness = shapeliness
+        self.dither = dither
         self.ditherResidual = 0
         self.times = {'dither': 0, 'putBest': 0, 'residual': 0}
 
@@ -64,7 +65,8 @@ class Generator:
         def applyDither():
             self.applyDither(row, col)
 
-        # self.times['dither'] += timeit.timeit(applyDither, number=1)
+        if self.dither:
+            self.times['dither'] += timeit.timeit(applyDither, number=1)
 
 
     def calcPriorityPositions(self):
@@ -134,7 +136,7 @@ class Generator:
                 self.putBest(row, col)
         
         print(self.times)
-        print(self.comboGrid)
+        # print(self.comboGrid)
         return self.comboGrid
 
     
