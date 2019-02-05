@@ -645,3 +645,127 @@ A compeletely new path would return to the simplicity of selecting one character
 
 Benefits: Angular selection is more likely to commit "sins of omission" rather than "sins of comission" which is preferable especially for this strategy.
  - Subsequent passes could focus on a different metric (improving shading, dither...)
+
+
+2019-02-03
+
+Modeling the way a human would draw a portrait
+- start with lines (SSIM, angular selection - sins of omission)
+- shading
+- fill in more lines
+- more shading?
+
+Different comparisons:
+- Whole character (4 subslice)
+- Whole character (4 subslice, plus best in each "unknown" overlap)
+	-   
+	123
+	4A5
+	678
+	- 8 unknown chars which overlap with char we are choosing (A)
+
+
+- 4 character combo (1 subslice)
+- 4 character combo (9 subslices)
+- 4 character combo (9 subslices, plus best in each "unknown" subslice)
+- 6 or 9 character combo
+
+"Do no harm" selection.
+Increasing the evaluation window every pass? (slow, but it IS fine-tuning..)
+- avoid "local maxima" - bad overall shape at the expense of good local shape (within a slice)
+
+
+ComboGrid is laid out exactly the same as before, except now we select 4 combo grid locations at a time (but with 1 char).
+
+So each set of TL,TR,BL,BR (4 subslices) representing a typed character has a shapeliness (priority). This is the sum of the priority of the underlying subslices. The shapeliness of that underlying subslice determines which metric (or what blend) should be used for that selection.
+Note that the order in which selections are made doesn't make much difference in this scheme, other than selecting which layer (which offset) is used. But we should select all of 1 layer at a time.
+
+Images of each character / combination in 4 quadrants *can be* pre-composited, that is, each subslice is pre-composited and fast matrix tiling can reassemble them to represent any possibility. That way, only the normal numChars**4 combos need to be generated, just like now.
+
+*pre-generating the combos may not be necessary or feasible. It depends on the performance penalty of compositing on the fly vs number of selected characters (or representatives) used to generate combos. For instance, with 10,000 character image (full page) and 100 chars to choose from (full set), compositing on the fly would take 268 seconds, while generating before would take 26800 (100 times longer).
+    - these calculations based on results in speed_tests.py
+    - BEST: do compositing on the fly, but store results as you go. check each time if already composited.
+
+Thus I think moving ahead with compositing on the fly is best. The mockup will be updated rather than re-generated each time (new function). WorkingMockup should be a class, with a single instance belonging to a Generator. 
+
+So, in order of priority (why not?)
+Each typed character (any layer):
+    Each candidate character (or representative):
+        Composite the character (in place) into TempWorkingMockup.
+        Compare the composite under that character to the target image
+         - use MSE and/or SSIM and/or custom metric to get score
+    Put chosen character into ComboGrid and update WorkingMockup.
+
+This will yield complete information about the ink we are adding, and on average 5/8 (0.625) information (.25+.5+.75+1)/4 about all the ink, on the first pass
+Note that we have more information after every selection, so the final selections (if each layer chosen in order) would have complete information, although the previous selections would be fixed. So we have complete information, but partial choice (25%, at each selection).
+
+ vs. with the one subslice that has full overlap, 4 with double overlap, and 4 with single = 4/9 (0.444_) information. We have 100% choice at first selection, but on average 50% choice, and in that case there are ... mehhh. It's just so much easier to consider one at a time.
+
+After considering one at a time, we will have a complete ComboGrid. We can then iterate on improving areas of high importance, etc by changing 1 character at a time, starting back at the first selection - repeating the same selection order as before. If no characters in a subslice change through this second iteration, that subslice can be marked "stable". We can repeat this process until all subslices have stabilized.
+
+Note that this method only considers the shape or shade matching within a particular character (4 subslices).
+Further iterations could widen the window to select more than 1 character at a time - perhaps this should be specified manually (since very slow). Then error can be computed on that entire region (which is not the same for SSIM as the sum of the error between the sub-regions).
+We can also widen the measurement window while still allowing only 1 change at a time.
+
+All of these methods are prone to finding local maxima.
+
+
+2019-02-05 Meeting with prof
+
+Progress:
+- Constraints working perfectly (after much error!)
+- New general idea: "do no harm" / "sins of omission" selection
+
+- Selection order:
+    - Linear causes error to be "smeared" to the right, bottom
+    - Random is worse than linear
+    - Priority is hit and miss
+        - Having trouble getting a good priority map with Laplace (Sobel)
+    - User could specify selection order
+
+- Selectors:
+    - NN selector can't be constrained, so all results returned
+        - Must then filter through to get constraints
+        - This is very slow!
+
+- Speed tests
+    - 0.25ms / combo subslice to generate (composite, object init)
+        - So 1ms per entire character during selection
+    - getSimilar with single ANN: 8.5ms for 10k combos
+        - 180ms for 160k combos!!!
+        - selection via constraints means numChars**2 instead of numChars**4 comparisons. So even with 250x slower selection (SSIM vs NN) this still wins
+
+
+Issues:
+- High amount of error due to not considering "spill"
+    - Current selection process is a terrible idea!
+- Dither is really screwed up! Need to start over?
+    - In practice there are no residuals. Should we limit the black level in the dither image (target, which has been lightened?)
+    - Quite confused about dither implementation, generally
+- SSIM is useless on a small window (subslice)
+    - How can I use a larger window?
+    - Works OK on 4 subslices (as seen in first version of program)
+
+Ideas:
+- combos to generate ahead of time:
+    - each character alone
+    - all combinations of darkest k characters
+        - to find "black level" for level matching target image
+- "lookahead" when selecting chars
+    - what is math for this
+- upper bound on error: any selection below this is acceptable
+ - A don't worry about this
+- Some kind of search algorithm starting at a seed point?
+- Multiple passes (with some constraints fixed)
+    - for 1 character at a time, loop back to 1st layer once all selected
+- Different metrics for different passes? (How to improve shading once shape is good? How to improve dither on shading passes?)
+
+Other questions:
+- representatives / bins
+    - still makes sense?
+    - just sort them a do a binary search until desired error reached?
+    - low-res representation? (ie. avg value for each subslice)
+        [TL, TR, BL, BR]
+        - would be very fast
+- finding what needs to be added? (ie. subtract existing choices from target image?)
+- 

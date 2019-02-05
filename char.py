@@ -15,11 +15,7 @@ class Char:
         self.TRq = img[:self.h//2, self.w//2:]
         self.BLq = img[self.h//2:, :self.w//2]
         self.BRq = img[self.h//2:, self.w//2:]
-
-    def getImg(self):
-        topRow = np.concatenate((self.TLq, self.TRq), axis=1)
-        botRow = np.concatenate((self.BLq, self.BRq), axis=1)
-        return np.concatenate((topRow, botRow), axis=0)
+        self.img = img
 
 
 class CharSet:
