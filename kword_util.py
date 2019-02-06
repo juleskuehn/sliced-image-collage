@@ -84,7 +84,7 @@ def genMockup(comboGrid, comboSet, targetShape, targetPadding):
 # Returns ([cropped images], [padded images], (cropPosX, cropPosY))
 # Cropped images are used for comparison (selection)
 # Padded images can be used for reconstruction (mockup) but are not strictly necessary
-def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, yPad=0, shrink=1, blankSpace=True):
+def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, yPad=0, shrinkX=1, shrinkY=1, blankSpace=True):
     """
     The trick is that each quadrant needs to be integer-sized (unlikely this will occur naturally), while maintaining proportionality. So we do some resizing and keep track of the changes in proportion:
 
@@ -116,8 +116,8 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     # Need to resize charset such that stepX and stepY are each multiples of 2
     # After this, we can shrink without loss of proportion
     # shrinkFactor = 2
-    newStepX = ceil(stepX/shrink) * shrink
-    newStepY = ceil(stepY/shrink) * shrink
+    newStepX = ceil(stepX/shrinkX) * shrinkX
+    newStepY = ceil(stepY/shrinkY) * shrinkY
     # Ensure multiple of 2
     if newStepX % 2 == 1:
         newStepX += 1
@@ -147,7 +147,7 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
                 tiles.append(im[y-yPad:y+newStepY+yPad, x-xPad:x+newStepX+xPad][:,:])
     # Append blank tile
     if blankSpace:
-        tiles.append(np.full((newStepY+yPad*2, newStepX+xPad*2), 255.0, dtype='uint8'))
+        tiles.insert(0, np.full((newStepY+yPad*2, newStepX+xPad*2), 255.0, dtype='uint8'))
         
     print(len(tiles), 'characters chopped.')
 
