@@ -116,8 +116,8 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     # Need to resize charset such that stepX and stepY are each multiples of 2
     # After this, we can shrink without loss of proportion
     # shrinkFactor = 2
-    newStepX = ceil(stepX/shrink)
-    newStepY = ceil(stepY/shrink)
+    newStepX = ceil(stepX/shrink) * shrink
+    newStepY = ceil(stepY/shrink) * shrink
     # Ensure multiple of 2
     if newStepX % 2 == 1:
         newStepX += 1
@@ -128,7 +128,7 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     yChange = stepY / newStepY
 
     im = cv2.resize(im, dsize=(newStepX * numX, newStepY * numY), interpolation=cv2.INTER_AREA)
-    print(np.max(im))
+    print('max char level:', np.max(im), 'min char level:', np.min(im))
     print("Actual character size", stepX, stepY)
     print("Resized char size", newStepX, newStepY)
     print("resized charset has shape", im.shape)

@@ -44,26 +44,33 @@ target = cv2.imread(targetImg, cv2.IMREAD_GRAYSCALE)
 print("target photo has shape", target.shape)
 
 # Get character set and related info
-cropped, padded, (xPad, yPad), (xChange, yChange) = chop_charset(
+cropped, padded, (xPos, yPos), (xChange, yChange) = chop_charset(
     fn=sourceImg, numX=slicesX, numY=slicesY, startX=0, startY=0,
-    xPad=0, yPad=0, shrink=shrink, blankSpace=True)
-
+    xPad=4, yPad=4, shrink=shrink, blankSpace=True)
 
 sortedCropIdx = np.argsort([np.average(char) for char in cropped])[::-1]
-print(sortedCropIdx)
+# print(sortedCropIdx)
 m = len(sortedCropIdx)//2 - c//2
 chooseThese = list(sortedCropIdx[:c])+list(sortedCropIdx[m:m+c])+list(sortedCropIdx[-c:])+[6, 8, 19, 75]
 bestChars = cropped[chooseThese]
 # randomCharIdx = list(np.random.choice(len(cropped)-1, numChars))
 
 # # Save characters
-# import os
-# d = os.getcwd() + '\\chars'
-# filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
-# for f in filesToRemove:
-#     os.remove(f) 
-# for i, char in enumerate(cropped):
-#     cv2.imwrite('chars/char_'+str(i)+'.png', char)
+import os
+d = os.getcwd() + '\\chars'
+filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
+for f in filesToRemove:
+    os.remove(f) 
+for i, char in enumerate(padded):
+    cv2.imwrite('chars/padded_'+str(i)+'.png', char)
+
+
+# Create Char objects from [padded]
+
+
+# Create combos of darkest characters (to find a black level)
+# Store combos in a sparse 4d array (defaultdict), more to be added as selection proceeds
+
 
 comboSet = ComboSet(CharSet(bestChars))
 
@@ -74,7 +81,7 @@ comboSet = ComboSet(CharSet(bestChars))
 #     cv2.imwrite('combos/combo_'+str(combo.idx)+'.png', combo.img)
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
-resizedTarget, targetPadding = resizeTarget(target, rowLength,  comboSet.byIdx[0].img.shape, (xChange, yChange))
+resizedTarget, targetPadding = resizeTarget(target, rowLength,  cropped[0].shape, (xChange, yChange))
 
 # cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
 brightenAmount = 1
@@ -97,7 +104,7 @@ print(mockupFn)
 # cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(m,0.5,target,0.5,0))
 cv2.imwrite(mockupFn+'.png', m)
 
-# ax1 = plt.subplot(111)
-# #create image plot
-# im1 = ax1.imshow(m,cmap='gray')
-# plt.show()
+ax1 = plt.subplot(111)
+#create image plot
+im1 = ax1.imshow(m,cmap='gray')
+plt.show()
