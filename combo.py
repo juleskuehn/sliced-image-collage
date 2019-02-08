@@ -1,66 +1,72 @@
 import numpy as np
-
+from collections import defaultdict as ddict
+import cv2
 
 class Combo:
     # Stores indices of Char slices and index of combo in ANN model
     # Optionally, stores composite image
     # Can also be used as a constraint (with no image or index)
-    def __init__(self, TL, TR, BL, BR, idx=None, charset=None):
+    def __init__(self, TL, TR, BL, BR, shrink=False):
         self.TL = TL
         self.TR = TR
         self.BL = BL
         self.BR = BR
-        self.idx = idx
-        self.img = self.genComposite(charset) if charset else None
-
-    def __str__(self):
-        return str([[self.TL, self.TR], [self.BL, self.BR]])
-
-    def __eq__(self, other):
-        return str(self) == str(other)
-
-    def __hash__(self):
-        return hash(str(self))
+        self.img = self.genComposite(shrink)
+        self.avg = np.average(self.img)
+        self.shrunken = cv2.resize(self.img,
+            dsize=(self.TL.shrunken.shape[1],self.TL.shrunken.shape[0]),
+            interpolation=cv2.INTER_AREA
+        )
 
     # charset is the list of char slices from which combos were generated
-    def genComposite(self, charset):
-        def toFloat(char):
-            return np.array(char / 255, dtype="float32")
+    def genComposite(self, shrink):
+        def toFloat(img):
+            return np.array(img / 255, dtype="float32")
 
-        TLc = toFloat(charset.get(self.TL).BRq)
-        TRc = toFloat(charset.get(self.TR).BLq)
-        BLc = toFloat(charset.get(self.BL).TRq)
-        BRc = toFloat(charset.get(self.BR).TLq)
+        def getTLq(img):
+            return img[:img.shape[0]//2, :img.shape[1]//2]
+        
+        def getTRq(img):
+            return img[:img.shape[0]//2, img.shape[1]//2:]
+        
+        def getBLq(img):
+            return img[img.shape[0]//2:, :img.shape[1]//2]
 
+        def getBRq(img):
+            return img[img.shape[0]//2:, img.shape[1]//2:]
+
+        TLimg = self.TL.shrunken if shrink else self.TL.cropped 
+        TRimg = self.TR.shrunken if shrink else self.TR.cropped 
+        BLimg = self.BL.shrunken if shrink else self.BL.cropped 
+        BRimg = self.BR.shrunken if shrink else self.BR.cropped 
+        TLc = toFloat(getBRq(TLimg))
+        TRc = toFloat(getBLq(TRimg))
+        BLc = toFloat(getTRq(BLimg))
+        BRc = toFloat(getTLq(BRimg))
         img = TLc * TRc * BLc * BRc
-
         return np.array(img * 255, dtype='uint8')
-
-    def isDone(self):
-        return np.all([self.TL, self.TR, self.BL, self.BR])
-
 
 class ComboSet:
     # Container class with useful methods
-    # Stores Combos in 4D Array for easy filtering by constraint
-    # Also in a list by indices of the ANN model
-    def __init__(self, charSet):
-        self.byIdx = []
-        self.byCombo = {}
-        self.numChars = len(charSet.chars)
-        n = self.numChars
-        self.byChars = np.empty((n+1,n+1,n+1,n+1), dtype=object)
-        self.size = n**4
-        i = 0
-        for a in range(1, n + 1):
-            for b in range(1, n + 1):
-                for c in range(1, n + 1):
-                    for d in range(1, n + 1):
-                        combo = Combo(a,b,c,d,idx=i,charset=charSet)
-                        self.byIdx.append(combo)
-                        self.byCombo[combo] = combo
-                        self.byChars[a,b,c,d] = combo
-                        i += 1
+    # Stores Combos in 4D sparse array for easy filtering by constraint
+    def __init__(self, chars=None):
+        self.combos = ddict(lambda: ddict(lambda: ddict(lambda: ddict(None))))
+        self.flat = []
+        if chars:
+            self.genCombos(chars)
 
-        # [print(combo) for combo in self.byChars[1,1,1,:]]
-        print("Generated", i, "combos.")
+    def genCombos(self, chars):
+        for TL in chars:
+            for TR in chars:
+                for BL in chars:
+                    for BR in chars:
+                        combo = Combo(TL, TR, BL, BR)
+                        self.combos[TL.id][TR.id][BL.id][BR.id] = combo
+                        self.flat.append(combo)
+
+        print("Generated", len(chars)**4, "combos.")
+
+    def genCombo(self, TL, TR, BL, BR):
+        combo = Combo(TL, TR, BL, BR)
+        self.combos[TL.id][TR.id][BL.id][BR.id] = combo
+        self.flat.append(combo)

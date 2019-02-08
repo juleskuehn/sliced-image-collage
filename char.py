@@ -34,7 +34,7 @@ class Char:
 class CharSet:
     def __init__(self, paddedChars, cropSettings):
         self.chars = [
-                        Char(charImg, cropSettings, i)
+                        Char(charImg, cropSettings, i+1)
                         for i, charImg in enumerate(paddedChars)
                      ]
         self.sortedChars = sorted(self.chars, key=lambda x: x.avg, reverse=True)
@@ -42,8 +42,8 @@ class CharSet:
     def get(self, i):
         return self.chars[i]
 
-    def getById(self, id):
-        return self.chars[i - 1]
+    def getByID(self, id):
+        return self.chars[id - 1]
 
     def getAll(self):
         return self.chars

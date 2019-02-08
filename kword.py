@@ -59,13 +59,13 @@ bestChars = cropped[chooseThese]
 # randomCharIdx = list(np.random.choice(len(cropped)-1, numChars)) """
 
 # # Save characters
-import os
-d = os.getcwd() + '\\chars'
-filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
-for f in filesToRemove:
-    os.remove(f) 
-for i, char in enumerate(padded):
-    cv2.imwrite('chars/padded_'+str(i)+'.png', char)
+# import os
+# d = os.getcwd() + '\\chars'
+# filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
+# for f in filesToRemove:
+#     os.remove(f) 
+# for i, char in enumerate(padded):
+#     cv2.imwrite('chars/padded_'+str(i)+'.png', char)
 
 # Create Char objects from [padded]
 cropSettings = {
@@ -76,15 +76,43 @@ cropSettings = {
     'shrinkX': shrinkX,
     'shrinkY': shrinkY
 }
-charset = CharSet(padded, cropSettings)
-[print(char) for char in charset.getSorted()]
+charSet = CharSet(padded, cropSettings)
+[print(char) for char in charSet.getSorted()]
+
+# # Save characters
+# import os
+# d = os.getcwd() + '\\shrunken'
+# filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
+# for f in filesToRemove:
+#     os.remove(f) 
+# for i, char in enumerate(charSet.getSorted()):
+#     cv2.imwrite('shrunken/shrunken_'+str(i)+'.png', char.shrunken)
 
 
-# Create combos of darkest characters (to find a black level)
-# Store combos in a sparse 4d array (defaultdict), more to be added as selection proceeds
+resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, cropped[0].shape, (xChange, yChange))
+# # Create combos of darkest 5 characters (to find a black level)
+# # Store combos in a sparse 4d array (defaultdict), more to be added as selection proceeds
+# comboSet = ComboSet(charSet.getSorted()[-10:])
+# minCombo = min(comboSet.flat, key=lambda x: x.avg)
+# print(minCombo.avg)
+# cv2.imwrite('darkCombo.png', minCombo.img)
+# resizedTarget = brightenTarget(resizedTarget, 127)
+cv2.imwrite('resized.png', resizedTarget)
+
+generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
+                                    targetPadding=targetPadding)
+
+generator.generateLayer('TL')
+generator.generateLayer('BR')
+generator.generateLayer('TR')
+generator.generateLayer('BL')
+# print(firstLayer)
+
+# for i, combo in enumerate(comboSet.flat):
+#     cv2.imwrite('combo'+str(i)+'.png', combo.img)
+
 """ 
 
-comboSet = ComboSet(CharSet(bestChars))
 
 # cv2.imwrite('combo_first.png', comboSet.byIdx[0].img)
 # cv2.imwrite('combo_last.png', comboSet.byIdx[-1].img)
@@ -93,18 +121,13 @@ comboSet = ComboSet(CharSet(bestChars))
 #     cv2.imwrite('combos/combo_'+str(combo.idx)+'.png', combo.img)
 
 # Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
-resizedTarget, targetPadding = resizeTarget(targetImg, rowLength,  cropped[0].shape, (xChange, yChange))
 
 # cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
-brightenAmount = 1
-resizedTarget = brightenTarget(resizedTarget, comboSet, brightenAmount)
 print(resizedTarget.dtype)
 
-generator = Generator(resizedTarget, comboSet, targetShape=targetImg.shape, targetPadding=targetPadding, dither=dither)
 cv2.imwrite('lapTest.png', generator.testPriorityOrder())
 
 
-filledComboGrid = generator.generatePriorityOrder(preview=preview)
 
 # # Generate  mockup (reconstruction of target in terms of source)
 m = genMockup(filledComboGrid, comboSet, targetImg.shape, targetPadding)

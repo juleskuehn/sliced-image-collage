@@ -768,4 +768,14 @@ Other questions:
         [TL, TR, BL, BR]
         - would be very fast
 - finding what needs to be added? (ie. subtract existing choices from target image?)
-- 
+
+
+2019-02-06
+
+Working on the rewrite
+- more character-level information
+- optional shrink before compositing
+- use full character set, composite on the fly
+- find darkest combos to get black level
+    - store combos in sparse array (4 dimensional defaultdict)
+    - add more combos as they are composited on the fly

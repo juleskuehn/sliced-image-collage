@@ -8,57 +8,34 @@ class ComboGrid:
     def __init__(self, rows, cols):
         self.rows = rows
         self.cols = cols
-        self.grid = np.array(
-                            [[Combo(None, None, None, None)
-                            for _ in range(cols)]
-                            for _ in range(rows)], dtype=object)
+        self.grid = np.array([[{'TL':None,'TR':None,'BL':None,'BR':None}
+                                for _ in range(cols)]
+                                for _ in range(rows)], dtype=object)
         # Constrain the edges to the space character
         for combo in self.grid[0,:]:
-            combo.TL = 1
-            combo.TR = 1
+            combo['TL'] = 1
+            combo['TR'] = 1
         for combo in self.grid[-1,:]:
-            combo.BL = 1
-            combo.BR = 1
+            combo['BL'] = 1
+            combo['BR'] = 1
         for combo in self.grid[:,0]:
-            combo.TL = 1
-            combo.BL = 1
+            combo['TL'] = 1
+            combo['BL'] = 1
         for combo in self.grid[:,-1]:
-            combo.TR = 1
-            combo.BR = 1
+            combo['TR'] = 1
+            combo['BR'] = 1
 
 
     def get(self, row, col):
         return self.grid[row, col]
 
 
-    def put(self, row, col, combo):
-        if (self.grid[row, col].TL and self.grid[row, col].TL != combo.TL
-        or self.grid[row, col].TR and self.grid[row, col].TR != combo.TR
-        or self.grid[row, col].BL and self.grid[row, col].BL != combo.BL
-        or self.grid[row, col].BR and self.grid[row, col].BR != combo.BR):
-            print("err!!!", self.grid[row,col], '!=', combo)
-        self.grid[row, col] = Combo(combo.TL, combo.TR, combo.BL, combo.BR)
-        # print(self)
-        if col > 0:
-            self.grid[row, col - 1].TR = combo.TL
-            self.grid[row, col - 1].BR = combo.BL
-        if col < self.cols - 1:
-            self.grid[row, col + 1].TL = combo.TR
-            self.grid[row, col + 1].BL = combo.BR
-        if row > 0:
-            self.grid[row - 1, col].BL = combo.TL
-            self.grid[row - 1, col].BR = combo.TR
-            if col > 0:
-                self.grid[row - 1, col - 1].BR = combo.TL
-            if col < self.cols - 1:
-                self.grid[row - 1, col + 1].BL = combo.TR
-        if row < self.rows - 1:
-            self.grid[row + 1, col].TL = combo.BL
-            self.grid[row + 1, col].TR = combo.BR
-            if col > 0:
-                self.grid[row + 1, col - 1].TR = combo.BL
-            if col < self.cols - 1:
-                self.grid[row + 1, col + 1].TL = combo.BR
+    # Put charID at the bottom right of (row,col), bottom left of col+1, etc
+    def put(self, row, col, charID):
+        self.grid[row, col]['BR'] = charID
+        self.grid[row+1, col]['TR'] = charID
+        self.grid[row, col+1]['BL'] = charID
+        self.grid[row+1, col+1]['TL'] = charID
 
 
     def __str__(self):
@@ -70,9 +47,9 @@ class ComboGrid:
         for row in range(self.grid.shape[0]):
             s1 = ' ' + str(row) + ' | '
             for col in range(self.grid.shape[1]):
-                s1 += f'{self.grid[row, col].TL or 0} {self.grid[row, col].TR or 0}  '
+                s1 += f"{self.grid[row, col]['TL'] or 0} {self.grid[row, col]['TR'] or 0}  "
             s2 = '   | '
             for col in range(self.grid.shape[1]):
-                s2 += f'{self.grid[row, col].BL or 0} {self.grid[row, col].BR or 0}  '
+                s2 += f"{self.grid[row, col]['BL'] or 0} {self.grid[row, col]['BR'] or 0}  "
             s += s1 + '\n' + s2 + '\n\n'
         return s
