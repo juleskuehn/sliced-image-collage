@@ -65,6 +65,7 @@ class Generator:
             newMockup = self.composite(mockupSlice, char.cropped)
             # Score the composite
             scores[char.id] = compare_mse(targetSlice, newMockup)
+            # scores[char.id] = -1 * compare_ssim(targetSlice, newMockup)
         # TODO return scores along with winning char ID for later use
         return min(scores, key=scores.get)
         # return min(chars, key=lambda x: (
@@ -72,7 +73,7 @@ class Generator:
         #     )).id
 
 
-    def generateLayer(self, layerID):
+    def generateLayers(self):
         def linearPositions(layerID):
             startRow = 0
             startCol = 0
@@ -104,7 +105,10 @@ class Generator:
             return fig, ax1
 
         # For top left layer, start at 0,0. For bottom left 1,0. Etc.
-        positions = linearPositions(layerID)
+        positions = linearPositions('TL')
+        positions += linearPositions('BR')
+        positions += linearPositions('TR')
+        positions += linearPositions('BL')
         fig, ax1 = setupFig()
 
         def gen():

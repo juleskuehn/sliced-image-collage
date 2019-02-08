@@ -96,16 +96,16 @@ resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, cropped[0].sha
 # minCombo = min(comboSet.flat, key=lambda x: x.avg)
 # print(minCombo.avg)
 # cv2.imwrite('darkCombo.png', minCombo.img)
-# resizedTarget = brightenTarget(resizedTarget, 127)
+resizedTarget = brightenTarget(resizedTarget, 64)
 cv2.imwrite('resized.png', resizedTarget)
 
 generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
 
-generator.generateLayer('TL')
-generator.generateLayer('BR')
-generator.generateLayer('TR')
-generator.generateLayer('BL')
+# Keep adding layers (on the same grid) forever
+while(True):
+    generator.generateLayers()
+
 # print(firstLayer)
 
 # for i, combo in enumerate(comboSet.flat):
