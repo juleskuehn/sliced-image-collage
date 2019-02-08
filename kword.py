@@ -102,16 +102,13 @@ cv2.imwrite('resized.png', resizedTarget)
 generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
 
-# Keep adding layers (on the same grid)
-generator.targetImg = brightenTarget(resizedTarget, 0)
+# Manually setting gamma correction
+generator.numLayers = 8
 generator.generateLayers(compareMode='ssim')
-generator.targetImg = brightenTarget(resizedTarget, 0)
 generator.generateLayers(compareMode='ssim')
-generator.targetImg = brightenTarget(resizedTarget, 128)
+# Reset Gamma correction
+generator.numLayers = 3
 generator.generateLayers(compareMode='mse')
-generator.targetImg = brightenTarget(resizedTarget, 64)
-generator.generateLayers(compareMode='mse')
-generator.targetImg = brightenTarget(resizedTarget, 0)
 generator.generateLayers(compareMode='mse')
 # print(firstLayer)
 

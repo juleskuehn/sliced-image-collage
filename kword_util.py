@@ -45,6 +45,13 @@ def brightenTarget(im, blackLevel):
     return np.array(im * ((255-diff)/255) + diff, dtype='uint8')
 
 
+def gammaCorrect(img, gamma=1):
+    lookUpTable = np.empty((1,256), np.uint8)
+    for i in range(256):
+        lookUpTable[0,i] = np.clip(pow(i / 255.0, gamma) * 255.0, 0, 255)
+    return cv2.LUT(img, lookUpTable)
+
+
 # Returns a mockup image, with the same size as the target image
 def genMockup(comboGrid, comboSet, targetShape, targetPadding):
     gridShape = comboGrid.grid.shape
