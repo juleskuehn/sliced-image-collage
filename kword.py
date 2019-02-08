@@ -37,6 +37,7 @@ rowLength = int(args[5])
 c = int(args[6])
 shrinkX = int(args[7])
 shrinkY = int(args[8])
+numAdjust = int(args[9])
 dither = 'dither' in args
 preview = 'preview' in args
 
@@ -101,7 +102,7 @@ cv2.imwrite('resized.png', resizedTarget)
 generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
 
-generator.generateLayers(compareModes=['mse','ssim','mse','mse'])
+generator.generateLayers(compareModes=['mse','mse','mse'], numAdjustPasses=numAdjust)
 
 
 # print(firstLayer)

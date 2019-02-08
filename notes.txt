@@ -824,11 +824,12 @@ General thoughts:
 
 Todo:
 - Dither
-- Looping back to previous selections
+* Looping back to previous selections
     - And continuing where selection changes
         - "Jiggle" algorithm
-- Evaluate output images / itermediate layers with MSE, SSIM
+    - For now, consider layer "fixed" if already onto next overtype layer
 - Save comboGrid after each layer
+- Evaluate output images / itermediate layers with MSE, SSIM
 - Use ANN for first 2 layers 
     - as BR has little overlap with TL, can select independently
     - Generate combos of first 2 overtypes for ANN model

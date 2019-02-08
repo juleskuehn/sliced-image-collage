@@ -3,9 +3,7 @@ from collections import defaultdict as ddict
 import cv2
 
 class Combo:
-    # Stores indices of Char slices and index of combo in ANN model
-    # Optionally, stores composite image
-    # Can also be used as a constraint (with no image or index)
+    
     def __init__(self, TL, TR, BL, BR, shrink=False):
         self.TL = TL
         self.TR = TR
@@ -66,7 +64,16 @@ class ComboSet:
 
         print("Generated", len(chars)**4, "combos.")
 
+    # Takes chars
     def genCombo(self, TL, TR, BL, BR):
         combo = Combo(TL, TR, BL, BR)
         self.combos[TL.id][TR.id][BL.id][BR.id] = combo
         self.flat.append(combo)
+        return combo
+
+    # Takes char IDs
+    def getCombo(self, TLid, TRid, BLid, BRid):
+        if BRid in self.combos[TLid][TRid][BLid]:
+            return self.combos[TLid][TRid][BLid][BRid]
+        else:
+            return None
