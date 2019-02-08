@@ -26,6 +26,7 @@ class Generator:
         self.mockupImg = np.full(targetImg.shape, 255, dtype='uint8')
         self.targetPadding = targetPadding or 0
         self.comboGrid = ComboGrid(self.rows, self.cols)
+        self.compareMode = 'mse'
 
 
     def getSliceBounds(self, row, col):
@@ -64,8 +65,13 @@ class Generator:
         for char in chars:
             newMockup = self.composite(mockupSlice, char.cropped)
             # Score the composite
-            scores[char.id] = compare_mse(targetSlice, newMockup)
-            # scores[char.id] = -1 * compare_ssim(targetSlice, newMockup)
+            if self.compareMode == 'mse':
+                scores[char.id] = compare_mse(targetSlice, newMockup)
+            elif self.compareMode == 'ssim':
+                scores[char.id] = -1 * compare_ssim(targetSlice, newMockup)
+            else:
+                print('generator: invalid compareMode')
+                exit()
         # TODO return scores along with winning char ID for later use
         return min(scores, key=scores.get)
         # return min(chars, key=lambda x: (
@@ -73,7 +79,8 @@ class Generator:
         #     )).id
 
 
-    def generateLayers(self):
+    def generateLayers(self, compareMode='mse'):
+        self.compareMode = compareMode
         def linearPositions(layerID):
             startRow = 0
             startCol = 0
