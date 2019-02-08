@@ -46,7 +46,7 @@ class Generator:
         base = 0.4
         step = 0.1
         gamma = min(base+step*self.numLayers, 1)
-        print(gamma)
+        # print(gamma)
         targetSlice = gammaCorrect(targetSlice, gamma)
         # Get ID of best match
         bestMatch = self.getBest(targetSlice, mockupSlice) 
@@ -67,7 +67,8 @@ class Generator:
     def getBest(self, targetSlice, mockupSlice):
         # TODO speed up search by taking advantage of sorted order
         chars = self.charSet.getAll()
-        scores = {} 
+        scores = {}
+        scores2 = {}
         for char in chars:
             newMockup = self.composite(mockupSlice, char.cropped)
             # Score the composite
@@ -75,9 +76,19 @@ class Generator:
                 scores[char.id] = compare_mse(targetSlice, newMockup)
             elif self.compareMode == 'ssim':
                 scores[char.id] = -1 * compare_ssim(targetSlice, newMockup)
+            elif self.compareMode == 'blend':
+                scores[char.id] = compare_mse(targetSlice, newMockup) 
+                scores2[char.id] = -1 * compare_ssim(targetSlice, newMockup) + 1
             else:
                 print('generator: invalid compareMode')
                 exit()
+
+        if self.compareMode == 'blend':
+            fMSE=self.numLayers/sum(scores.values())
+            fSSIM=max(0,(4-self.numLayers))/sum(scores2.values())
+            for k in scores:
+                scores[k] = scores[k]*fMSE + scores2[k]*fSSIM
+
         # TODO return scores along with winning char ID for later use
         return min(scores, key=scores.get)
         # return min(chars, key=lambda x: (
@@ -133,6 +144,7 @@ class Generator:
             row, col = positions.pop(0)
             if len(positions) % numPos == 0:
                 self.numLayers += 1
+                print('Starting layer', self.numLayers)
             self.putBest(row, col)
             ax1.clear()
             ax1.imshow(self.mockupImg, cmap='gray')

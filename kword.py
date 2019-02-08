@@ -103,11 +103,8 @@ generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
 
 # Manually setting gamma correction
-generator.numLayers = 8
-generator.generateLayers(compareMode='ssim')
-generator.generateLayers(compareMode='ssim')
-# Reset Gamma correction
-generator.numLayers = 3
+generator.numLayers = 0
+generator.generateLayers(compareMode='mse')
 generator.generateLayers(compareMode='mse')
 generator.generateLayers(compareMode='mse')
 # print(firstLayer)
