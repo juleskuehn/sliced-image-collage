@@ -792,7 +792,7 @@ General thoughts:
     - Improves both contrast range AND detail
         - The key is not to add too much ink at once
         * Need to modify metric to seriously discourage "sins of commission"
-    * Pass a configuration to the generator and have it run all passes at once
+    - DONE Pass a configuration to the generator and have it run all passes at once
 - Metrics:
     - mixing metrics (numerically) doesn't work as well as one might expect
     - MSE is a very solid metric
@@ -818,3 +818,28 @@ General thoughts:
         - Deepening search: "Locked" areas and "Unlocked" areas
         - Select which characters to include
         - Show area scores on hover
+
+
+2019-02-08
+
+Todo:
+- Dither
+- Looping back to previous selections
+    - And continuing where selection changes
+        - "Jiggle" algorithm
+- Evaluate output images / itermediate layers with MSE, SSIM
+- Save comboGrid after each layer
+- Use ANN for first 2 layers 
+    - as BR has little overlap with TL, can select independently
+    - Generate combos of first 2 overtypes for ANN model
+        - even at 100 characters, this is 4950 combos (workable)
+    - Probably a comparison of 'shrunken' will be necessary for this.
+- Use shrunken images for comparisons, generally.
+- Time the process and count comparisons
+
+Updates to terminology:
+- "Pass": All 4 offset layers
+- "Layer": One of TL, TR, BL, BR
+- "Char location": Combogrid location in which char is BR char.
+- "Overtyped char": List of chars selected for a char location.
+

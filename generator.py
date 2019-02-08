@@ -5,7 +5,6 @@ import cv2
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from selector_mse_ssim import Selector
 from skimage.measure import compare_ssim, compare_mse
 from combo import ComboSet, Combo
 from combo_grid import ComboGrid
@@ -133,11 +132,11 @@ class Generator:
             return fig, ax1
 
         # For top left layer, start at 0,0. For bottom left 1,0. Etc.
-        positions = linearPositions('TL')
-        numPos = len(positions)
-        positions += linearPositions('BR')
-        positions += linearPositions('TR')
-        positions += linearPositions('BL')
+        # Using None to indicate when we are switching to another layer
+        positions = linearPositions('TL') + [None]
+        positions += linearPositions('BR') + [None]
+        positions += linearPositions('TR') + [None]
+        positions += linearPositions('BL') + [None]
 
         self.positions = positions[:]
 
@@ -148,11 +147,11 @@ class Generator:
                 yield 0
 
         def animate(frame):
-            row, col = self.positions.pop(0)
-            if len(self.positions) % numPos == 0:
+            pos = self.positions.pop(0)
+            if pos == None:
                 # New staggered layer
                 self.numLayers += 1
-                print('Starting layer', self.numLayers+1)
+                print('Finished layer', self.numLayers)
                 if len(self.positions) == 0 and len(compareModes) > 0:
                     # New overtype set (another 4 layers)
                     self.overtype += 1
@@ -160,16 +159,21 @@ class Generator:
                     self.numLayers = 0
                     self.compareMode = compareModes.pop(0)
                     self.positions = positions[:]
+                if len(self.positions) > 0:
+                    pos = self.positions.pop(0)
+                else:
+                    return
+            row, col = pos
             self.putBest(row, col)
             ax1.clear()
             ax1.imshow(self.mockupImg, cmap='gray')
 
-        numFrames = len(positions)*(len(compareModes)+1)
+        numFrames = (len(positions)-4)*(len(compareModes)+1)
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=30, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
         ani = animation.FuncAnimation(fig, animate, repeat=False, frames=numFrames, interval=1)
-        ani.save('mp_10_ssmm.mp4', writer=writer)
-        # plt.show()
+        # ani.save('mp_10_ssmm.mp4', writer=writer)
+        plt.show()
         return self.comboGrid
         
 

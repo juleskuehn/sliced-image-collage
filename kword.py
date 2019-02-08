@@ -15,7 +15,6 @@ from scipy.ndimage import sobel
 from combo import Combo, ComboSet
 from combo_grid import ComboGrid
 from char import Char, CharSet
-from selector import Selector
 from generator import Generator
 from kword_util import *
 
@@ -77,7 +76,7 @@ cropSettings = {
     'shrinkY': shrinkY
 }
 charSet = CharSet(padded, cropSettings)
-[print(char) for char in charSet.getSorted()]
+# [print(char) for char in charSet.getSorted()]
 
 # # Save characters
 # import os
