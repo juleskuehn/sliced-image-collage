@@ -20,15 +20,6 @@ from kword_util import *
 
 args = sys.argv
 
-"""     # print('''Usage: python dither_selector.py sourceFn targetFn slicesX slicesY rowLength bestK ditherMode [noblank]
-    #     sourceFn, targetFn: file paths
-    #     slicesX, slicesY: positive integers
-    #     rowLength: best set to same as slicesX, for testing reconstruction of the same sourceFn vs targetFn
-    #     bestK: how many nearest neighbours are given to the MSE evaluator
-    #     ditherMode: one of ["fs", "li", "priority", "none"]
-    #     noblank: this word will override the default behaviour, which is to keep a blank space in the charset.
-    #     ''') """
-
 sourceFn = args[1]
 targetFn = args[2]
 slicesX = int(args[3])
@@ -41,33 +32,15 @@ numAdjust = int(args[9])
 dither = 'dither' in args
 preview = 'preview' in args
 
+#################
+# Prepare charset
 targetImg = cv2.imread(targetFn, cv2.IMREAD_GRAYSCALE)
 print("target photo has shape", targetImg.shape)
-
-# Get character set and related info
 xPad = 4
 yPad = 4
 cropped, padded, (xCropPos, yCropPos), (xChange, yChange) = chop_charset(
     fn=sourceFn, numX=slicesX, numY=slicesY, startX=0, startY=0,
     xPad=xPad, yPad=yPad, shrinkX=shrinkX, shrinkY=shrinkY, blankSpace=True)
-
-""" sortedCropIdx = np.argsort([np.average(char) for char in cropped])[::-1]
-# print(sortedCropIdx)
-m = len(sortedCropIdx)//2 - c//2
-chooseThese = list(sortedCropIdx[:c])+list(sortedCropIdx[m:m+c])+list(sortedCropIdx[-c:])+[6, 8, 19, 75]
-bestChars = cropped[chooseThese]
-# randomCharIdx = list(np.random.choice(len(cropped)-1, numChars)) """
-
-# # Save characters
-# import os
-# d = os.getcwd() + '\\chars'
-# filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
-# for f in filesToRemove:
-#     os.remove(f) 
-# for i, char in enumerate(padded):
-#     cv2.imwrite('chars/padded_'+str(i)+'.png', char)
-
-# Create Char objects from [padded]
 cropSettings = {
     'xPad': xPad,
     'yPad': yPad,
@@ -77,68 +50,37 @@ cropSettings = {
     'shrinkY': shrinkY
 }
 charSet = CharSet(padded, cropSettings)
-# [print(char) for char in charSet.getSorted()]
+
+######################
+# Prepare target image
+resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, cropped[0].shape, (xChange, yChange))
+
+
+#################################################
+# Generate mockup (the part that really matters!)
+generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
+                                    targetPadding=targetPadding)
+generator.generateLayers(compareModes=['blend','mse','mse','mse'], numAdjustPasses=numAdjust)
+
+
+###################
+# Save mockup image
+mockupFn = f"mockup/mp_{sourceFn.split('.')[-2][1:]}_{targetFn.split('.')[-2][1:]}_{rowLength}"
+print("writing file:",mockupFn)
+mockupImg = generator.mockupImg
+if targetPadding > 0: # Crop and resize mockup to match target image
+    mockupImg = mockupImg[:-targetPadding, :]
+resized = cv2.resize(mockupImg, dsize=(targetImg.shape[1],targetImg.shape[0]), interpolation=cv2.INTER_AREA)
+cv2.imwrite(mockupFn+'.png', resized)
+
+# Overlay the original image for comparison
+# cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(resized,0.5,targetImg,0.5,0))
 
 # # Save characters
 # import os
-# d = os.getcwd() + '\\shrunken'
+# d = os.getcwd() + '\\chars'
 # filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
 # for f in filesToRemove:
 #     os.remove(f) 
-# for i, char in enumerate(charSet.getSorted()):
-#     cv2.imwrite('shrunken/shrunken_'+str(i)+'.png', char.shrunken)
-
-
-resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, cropped[0].shape, (xChange, yChange))
-# # Create combos of darkest 5 characters (to find a black level)
-# # Store combos in a sparse 4d array (defaultdict), more to be added as selection proceeds
-# comboSet = ComboSet(charSet.getSorted()[-10:])
-# minCombo = min(comboSet.flat, key=lambda x: x.avg)
-# print(minCombo.avg)
-# cv2.imwrite('darkCombo.png', minCombo.img)
-# resizedTarget = brightenTarget(resizedTarget, 64)
-cv2.imwrite('resized.png', resizedTarget)
-
-generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
-                                    targetPadding=targetPadding)
-
-generator.generateLayers(compareModes=['mse','mse','mse'], numAdjustPasses=numAdjust)
-
-
-# print(firstLayer)
-
-# for i, combo in enumerate(comboSet.flat):
-#     cv2.imwrite('combo'+str(i)+'.png', combo.img)
-
-""" 
-
-
-# cv2.imwrite('combo_first.png', comboSet.byIdx[0].img)
-# cv2.imwrite('combo_last.png', comboSet.byIdx[-1].img)
-
-# for combo in comboSet.byIdx:
-#     cv2.imwrite('combos/combo_'+str(combo.idx)+'.png', combo.img)
-
-# Resize target photo to rowLength * charWidth and pad to next multiple of charHeight
-
-# cv2.imwrite('sobel.png', cv2.Laplacian(resizedTarget,cv2.CV_64F))
-print(resizedTarget.dtype)
-
-cv2.imwrite('lapTest.png', generator.testPriorityOrder())
-
-
-
-# # Generate  mockup (reconstruction of target in terms of source)
-m = genMockup(filledComboGrid, comboSet, targetImg.shape, targetPadding)
-
-mockupFn = f"mockup/mockup_{sourceFn.split('.')[-2][1:]}_{targetFn.split('.')[-2][1:]}_{rowLength}w_c{c}_shrink{shrink}_{dither}"
-print("writing file:")
-print(mockupFn)
-
-# cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(m,0.5,targetImg,0.5,0))
-cv2.imwrite(mockupFn+'.png', m)
-
-ax1 = plt.subplot(111)
-#create image plot
-im1 = ax1.imshow(m,cmap='gray')
-plt.show() """
+# for i, char in enumerate(padded):
+#     cv2.imwrite('chars/padded_'+str(i)+'.png', char)

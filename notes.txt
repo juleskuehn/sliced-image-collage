@@ -824,19 +824,23 @@ General thoughts:
 
 Todo:
 - Dither
-* Looping back to previous selections
-    - And continuing where selection changes
+
+- DONE Looping back to previous selections
+    * And continuing only where selection changes
         - "Jiggle" algorithm
+        - Randomize order?
     - For now, consider layer "fixed" if already onto next overtype layer
-- Save comboGrid after each layer
+        * Unlock this to loop back to previous pass (no strong concept of overtype)
+            - would need the comboGrid to store multiple Indices in each TL,TR,BL,BR
+            - Ability to jiggle after every new layer, not just every pass
+
+    - Ability to first select with MSE, then correct with SSIM, then correct with MSE, etc
+
 - Evaluate output images / itermediate layers with MSE, SSIM
-- Use ANN for first 2 layers 
-    - as BR has little overlap with TL, can select independently
-    - Generate combos of first 2 overtypes for ANN model
-        - even at 100 characters, this is 4950 combos (workable)
-    - Probably a comparison of 'shrunken' will be necessary for this.
 - Use shrunken images for comparisons, generally.
 - Time the process and count comparisons
+
+- Better command line options (or better yet, GUI)
 
 Updates to terminology:
 - "Pass": All 4 offset layers

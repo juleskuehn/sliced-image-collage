@@ -30,7 +30,7 @@ class Generator:
         self.numLayers = 0 # How many times has the image been typed
         self.overtype = 1 # How many times have all 4 layers been typed
         self.firstPass = True
-        self.maxGamma = [0.7,0.8,0.9,1]
+        self.maxGamma = [0.7,0.8,0.9,0.95]
         self.changed = []
 
     def getSliceBounds(self, row, col):
@@ -46,7 +46,7 @@ class Generator:
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         targetSlice = self.targetImg[startY:endY, startX:endX]
         mockupSlice = self.mockupImg[startY:endY, startX:endX]
-        if not (self.compareMode == 'ssim' and self.overtype == 1):
+        if self.compareMode == 'mse':
             # Brighten the target depending on how many layers have been typed
             gamma = 0.25
             if self.numLayers > 1:
@@ -105,8 +105,8 @@ class Generator:
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         targetSlice = self.targetImg[startY:endY, startX:endX]
         # Brighten the target to match maximum typable in first overtype
-        # print(gamma)
-        targetSlice = gammaCorrect(targetSlice, self.maxGamma[0])
+        if self.compareMode == 'mse':
+            targetSlice = gammaCorrect(targetSlice, self.maxGamma[0])
         # Get ID of best match
         bestMatch = self.getBestAdj(targetSlice, row, col) 
         # print(bestMatch)
@@ -114,7 +114,7 @@ class Generator:
         if self.comboGrid.get(row, col)['BR'] != bestMatch:
             self.comboGrid.put(row, col, bestMatch)
             # In subsequent passes, only need to check chars affected by swap
-            self.changed.append[(row, col)]
+            self.changed.append((row, col))
 
         self.mockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col)
 
@@ -256,7 +256,7 @@ class Generator:
                         self.numLayers -= 4
                         self.positions = positions[:]
                     elif len(compareModes) > 0:
-                        print(self.comboGrid)
+                        # print(self.comboGrid)
                         self.adjustPass = 0
                         # New overtype set (another 4 layers)
                         self.overtype += 1
@@ -280,8 +280,8 @@ class Generator:
 
         numFrames = (len(positions)-4)*(len(compareModes)+1+numAdjustPasses)
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=30, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
+        writer = Writer(fps=60, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
         ani = animation.FuncAnimation(fig, animate, repeat=False, frames=numFrames, interval=1)
-        # ani.save('mp_10_ssmm.mp4', writer=writer)
-        plt.show()
+        ani.save('mp_adj.mp4', writer=writer)
+        # plt.show()
         return self.comboGrid
