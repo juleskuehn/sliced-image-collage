@@ -779,3 +779,42 @@ Working on the rewrite
 - find darkest combos to get black level
     - store combos in sparse array (4 dimensional defaultdict)
     - add more combos as they are composited on the fly
+
+
+2019-02-07
+
+Rewrite is going very well!
+
+General thoughts:
+- Selecting one character at a time is a very sane approach
+- Multiple passes:
+    - Taking multiple passes (at the same grid alignment ie TL, TR, BL, BR)
+    - Improves both contrast range AND detail
+        - The key is not to add too much ink at once
+        * Need to modify metric to seriously discourage "sins of commission"
+    * Pass a configuration to the generator and have it run all passes at once
+- Metrics:
+    - mixing metrics (numerically) doesn't work as well as one might expect
+    - MSE is a very solid metric
+    - SSIM can be used early in the process
+        - early on it has a tendency to be too light
+        - but later has a tendency to get too dark
+    - Metrics are OK going forward, no need to improve
+
+* Main things to work on:
+    - Dither (how?)
+        - broad dither most important
+            - if happening in isolation on multiple layers / overlaps...
+            - should distribute itself into a finer pattern
+    * Improving on previous selections
+        - After selecting a new layer, move 1 layer back and try 'next best' chars
+        * After selecting all 4 layers, move back to first layer and cycle back
+            - Only need to continue forward if something has changed!
+            - Can repeat this indefinitely if not careful
+    * Evaluation of output images (SSIM and MSE)
+    - GUI
+        - Adjust hyperparameters
+        - Scroll through for different matches (per layer) ?
+        - Deepening search: "Locked" areas and "Unlocked" areas
+        - Select which characters to include
+        - Show area scores on hover

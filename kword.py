@@ -102,11 +102,8 @@ cv2.imwrite('resized.png', resizedTarget)
 generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
 
-# Manually setting gamma correction
-generator.numLayers = 0
-generator.generateLayers(compareMode='mse')
-generator.generateLayers(compareMode='mse')
-generator.generateLayers(compareMode='mse')
+generator.generateLayers(compareModes=['ssim','ssim','mse','mse'])
+
 # print(firstLayer)
 
 # for i, combo in enumerate(comboSet.flat):

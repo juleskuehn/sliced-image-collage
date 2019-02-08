@@ -28,6 +28,7 @@ class Generator:
         self.comboGrid = ComboGrid(self.rows, self.cols)
         self.compareMode = 'mse'
         self.numLayers = 0 # How many times has the image been typed
+        self.overtype = 1 # How many times have all 4 layers been typed
 
     def getSliceBounds(self, row, col):
         startY = row * self.comboH
@@ -42,12 +43,13 @@ class Generator:
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         targetSlice = self.targetImg[startY:endY, startX:endX]
         mockupSlice = self.mockupImg[startY:endY, startX:endX]
-        # Brighten the target depending on how many layers have been typed
-        base = 0.4
-        step = 0.1
-        gamma = min(base+step*self.numLayers, 1)
-        # print(gamma)
-        targetSlice = gammaCorrect(targetSlice, gamma)
+        if not (self.compareMode == 'ssim' and self.overtype == 1):
+            # Brighten the target depending on how many layers have been typed
+            base = 0.25
+            step = 0.25
+            gamma = min((base*self.overtype)+step*self.numLayers, 1)
+            # print(gamma)
+            targetSlice = gammaCorrect(targetSlice, gamma)
         # Get ID of best match
         bestMatch = self.getBest(targetSlice, mockupSlice) 
         self.comboGrid.put(row, col, bestMatch)
@@ -96,8 +98,9 @@ class Generator:
         #     )).id
 
 
-    def generateLayers(self, compareMode='mse'):
-        self.compareMode = compareMode
+    def generateLayers(self, compareModes=['mse']):
+        
+        self.compareMode = compareModes.pop(0)
         def linearPositions(layerID):
             startRow = 0
             startCol = 0
@@ -126,6 +129,7 @@ class Generator:
             fig.subplots_adjust(top = 1)
             fig.subplots_adjust(right = 1)
             fig.subplots_adjust(left = 0)
+            fig.gca().set_frame_on(False)
             return fig, ax1
 
         # For top left layer, start at 0,0. For bottom left 1,0. Etc.
@@ -134,26 +138,38 @@ class Generator:
         positions += linearPositions('BR')
         positions += linearPositions('TR')
         positions += linearPositions('BL')
+
+        self.positions = positions[:]
+
         fig, ax1 = setupFig()
 
         def gen():
-            while len(positions) > 0:
+            while len(self.positions) > 0:
                 yield 0
 
         def animate(frame):
-            row, col = positions.pop(0)
-            if len(positions) % numPos == 0:
+            row, col = self.positions.pop(0)
+            if len(self.positions) % numPos == 0:
+                # New staggered layer
                 self.numLayers += 1
-                print('Starting layer', self.numLayers)
+                print('Starting layer', self.numLayers+1)
+                if len(self.positions) == 0 and len(compareModes) > 0:
+                    # New overtype set (another 4 layers)
+                    self.overtype += 1
+                    print('Starting overtype', self.overtype)
+                    self.numLayers = 0
+                    self.compareMode = compareModes.pop(0)
+                    self.positions = positions[:]
             self.putBest(row, col)
             ax1.clear()
             ax1.imshow(self.mockupImg, cmap='gray')
 
+        numFrames = len(positions)*(len(compareModes)+1)
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=10, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
-        ani = animation.FuncAnimation(fig, animate, frames=gen, interval=1)
-        # ani.save('animation.mp4', writer=writer)
-        plt.show()
+        writer = Writer(fps=30, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
+        ani = animation.FuncAnimation(fig, animate, repeat=False, frames=numFrames, interval=1)
+        ani.save('mp_10_ssmm.mp4', writer=writer)
+        # plt.show()
         return self.comboGrid
         
 
