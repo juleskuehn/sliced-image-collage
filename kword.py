@@ -102,7 +102,8 @@ cv2.imwrite('resized.png', resizedTarget)
 generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
 
-generator.generateLayers(compareModes=['ssim','ssim','mse','mse'])
+generator.generateLayers(compareModes=['mse','ssim','mse','mse'])
+
 
 # print(firstLayer)
 
