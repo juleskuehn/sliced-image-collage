@@ -10,7 +10,7 @@ from skimage.measure import compare_ssim, compare_mse
 from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
-from kword_util import genMockup
+from kword_util import genMockup, gammaCorrect
 
 class Generator:
 
@@ -27,6 +27,7 @@ class Generator:
         self.targetPadding = targetPadding or 0
         self.comboGrid = ComboGrid(self.rows, self.cols)
         self.compareMode = 'mse'
+        self.numLayers = 0 # How many times has the image been typed
 
 
     def getSliceBounds(self, row, col):
@@ -42,6 +43,8 @@ class Generator:
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         targetSlice = self.targetImg[startY:endY, startX:endX]
         mockupSlice = self.mockupImg[startY:endY, startX:endX]
+        # Brighten the target depending on how many layers have been typed
+        targetSlice = gammaCorrect(targetSlice, 1/min(1, 5-self.numLayers))
         # Get ID of best match
         bestMatch = self.getBest(targetSlice, mockupSlice) 
         self.comboGrid.put(row, col, bestMatch)
@@ -113,6 +116,7 @@ class Generator:
 
         # For top left layer, start at 0,0. For bottom left 1,0. Etc.
         positions = linearPositions('TL')
+        numPos = len(positions)
         positions += linearPositions('BR')
         positions += linearPositions('TR')
         positions += linearPositions('BL')
@@ -124,6 +128,8 @@ class Generator:
 
         def animate(frame):
             row, col = positions.pop(0)
+            if len(positions) % numPos == 0:
+                self.numLayers += 1
             self.putBest(row, col)
             ax1.clear()
             ax1.imshow(self.mockupImg, cmap='gray')
