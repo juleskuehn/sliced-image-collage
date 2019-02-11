@@ -854,26 +854,37 @@ Finding great references today, especially "Structure based ascii art"
  - new metric worth trying AISS
 
 TODO:
- - Implement dirty bit algorithm
+ - DONE Implement dirty bit algorithm
+ * Fix the saving
+ - Animation shows when a slice
+   - is under selection (pink) is dirty (yellow), is clear (white)
+ - Additional layers (lock first layer?)
+ - Put constraint, variations on it as noted below:
+    cool algorithm for selection:
+    - DONE select a random char and place it. (random init)
+    * in next layer, select first random character that improves things
+        - place it (overtop).
+    - repeat for other 2 layers. then back at the top, looking for replacement.
+        (i'm already doing this, but with the "best" character each time).
+        i thought this would be more like a "jiggle" towards stability
+        (some local optima will emerge no matter what i do)
 
-cool algorithm for selection:
-- select a random char and place it.
-- select the first character that improves things and place it (overtop).
-- repeat for other 2 layers. then back at the top, looking for replacement.
-(i'm already doing this, but with the "best" character each time).
-
-i thought this would be more like a "jiggle" towards stability
-(some local optima will emerge no matter what i do)
-
-variations:
-- first random char meeting a tolerance, or "best of first x random chars"
-- or starting in a sorted list of chars at the average value to fill
- - then binary search
+    variations:
+    - first random char meeting a tolerance, or "best of first x random chars"
+    - or starting in a sorted list of chars at the average value to fill
+    - then binary search
 
  USAGE:
-python kword.py .\hemingwayCrop.png b 20 show
+python kword.py .\hemingwayCrop.png b 0.7 20 show
 Arguments are:
     <target image path>
     <mode for each pass (blend, mse, ssim)> 
+    <gamma correction>
     <row length>
     <show (or no argument to save animation)>
+
+Notes:
+Row length matters a lot. As in AISSM, find the best stretch to capture features (automatically adjust your row length += 5, say)
+- can also try rotation etc
+- I don't want to do deformation
+

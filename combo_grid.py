@@ -5,7 +5,7 @@ from combo import Combo
 class ComboGrid:
     # A grid of shape (rows, cols) of Combos.
     # 1 is the space (empty) character. It differs from having no constraint.
-    def __init__(self, rows, cols):
+    def __init__(self, rows, cols, random=0):
         self.rows = rows
         self.cols = cols
         # Intiialize grid to space character

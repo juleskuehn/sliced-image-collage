@@ -46,8 +46,7 @@ class Generator:
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         targetSlice = self.targetImg[startY:endY, startX:endX]
         # Brighten the target to match maximum typable in first overtype
-        if self.compareMode == 'mse':
-            targetSlice = gammaCorrect(targetSlice, self.maxGamma[0])
+        targetSlice = gammaCorrect(targetSlice, self.maxGamma)
         # Get ID of best match
         bestMatch = self.getBestAdj(targetSlice, row, col)
         # print(bestMatch)
@@ -134,17 +133,18 @@ class Generator:
         self.comboGrid.grid = origGrid
 
         if self.compareMode == 'blend':
-            fMSE=self.numLayers/sum(scores.values())
-            fSSIM=max(0,(4-self.numLayers))/sum(scores2.values())
+            fMSE=sum(scores.values())
+            fSSIM=sum(scores2.values())
             for k in scores:
-                scores[k] = scores[k]*fMSE + scores2[k]*fSSIM
+                scores[k] = (scores[k]/fMSE) * (scores2[k]/fSSIM)
 
         # TODO return scores along with winning char ID for later use
         return min(scores, key=scores.get)
 
 
     def generateLayers(self, compareModes=['m'], numAdjustPasses=0,
-                        show=True, mockupFn='mp_untitled'):
+                        show=True, mockupFn='mp_untitled', gamma=1,
+                        randomInit=False, randomOrder=False):
         
         modeDict = {
             'm':'mse',
@@ -152,9 +152,10 @@ class Generator:
             'b':'blend'
         }
         compareModes = [modeDict[c] for c in compareModes]
-        
 
-        def dirtyLinearPositions(randomize=True):
+        self.maxGamma = gamma
+
+        def dirtyLinearPositions(randomize=False):
             positions = []
             for layerID in [0, 3, 1, 2]:
                 startRow = 0
@@ -192,7 +193,16 @@ class Generator:
         self.compareMode = compareModes.pop(0)
         # For top left layer, start at 0,0. For bottom left 1,0. Etc.
         # Using None to indicate when we are switching to another layer
-        self.positions = dirtyLinearPositions()
+        self.positions = dirtyLinearPositions(randomize=randomOrder)
+
+        # Initialize randomly if desired
+        numChars = len(self.charSet.getAll())
+        if randomInit:
+            while len(self.positions) > 0:
+                row, col = self.positions.pop(0)
+                startX, startY, endX, endY = self.getSliceBounds(row, col)
+                self.comboGrid.put(row, col, np.random.randint(1, numChars+1))
+                self.mockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col)
 
         fig, ax1 = setupFig()
         self.adjustPass = 0
@@ -207,7 +217,7 @@ class Generator:
                 print("Finished pass")
                 self.comboGrid.printDirty()
                 print(self.comboGrid)
-                self.positions += dirtyLinearPositions()
+                self.positions += dirtyLinearPositions(randomize=randomOrder)
                 print("dirty:", len(self.positions))
             row, col = self.positions.pop(0)
             if self.putBestAdj(row, col):
@@ -217,7 +227,7 @@ class Generator:
         # numFrames = (len(self.positions)-4)*(len(compareModes)+1+numAdjustPasses)
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=30, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
-        ani = animation.FuncAnimation(fig, animate, repeat=False, frames=genFrames(), interval=20)
+        ani = animation.FuncAnimation(fig, animate, repeat=False, frames=genFrames(), interval=1)
         if show:
             plt.show()
         else:
