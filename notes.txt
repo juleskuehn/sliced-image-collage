@@ -855,7 +855,7 @@ Finding great references today, especially "Structure based ascii art"
 
 TODO:
  - DONE Implement dirty bit algorithm
- * Fix the saving
+ - DONE (just keep going to pop error) Fix the saving
  - Animation shows when a slice
    - is under selection (pink) is dirty (yellow), is clear (white)
  - Additional layers (lock first layer?)
@@ -868,11 +868,14 @@ TODO:
         (i'm already doing this, but with the "best" character each time).
         i thought this would be more like a "jiggle" towards stability
         (some local optima will emerge no matter what i do)
-
     variations:
     - first random char meeting a tolerance, or "best of first x random chars"
     - or starting in a sorted list of chars at the average value to fill
     - then binary search
+ - DONE Test output image against metrics, report
+ - DONE Track number of comparisons, number of swaps
+ - Try different image scales to find best row length
+ - Integrate AISSM metric
 
  USAGE:
 python kword.py .\hemingwayCrop.png b 0.7 20 show
@@ -887,4 +890,63 @@ Notes:
 Row length matters a lot. As in AISSM, find the best stretch to capture features (automatically adjust your row length += 5, say)
 - can also try rotation etc
 - I don't want to do deformation
+
+
+2019-02-11
+----------
+
+Added some logging to keep track of number comparisons etc.
+With linear ordered selection and blank init:
+ python kword.py .\maisie-williams.png b 0.8 15
+...
+1393 positions visited
+245168 comparisons made
+
+With random ordered selection and blank init:
+1581 positions visited
+278256 comparisons made
+
+With linear ordered selection and random init:
+1309 positions visited
+230384 comparisons made
+run2:
+1437 positions visited
+252912 comparisons made
+
+With random ordered selection and random init:
+1538 positions visited
+270688 comparisons made
+
+So the linear order is faster, but random init may or may not improve things.
+
+Scores:
+
+writing file: mockup/mp_maisie-williams_5_b
+PSNR: 7.1870309108777155
+SSIM: 0.3602742456955855
+
+Finished!
+2525 positions visited
+444400 comparisons made
+writing file: mockup/mp_maisie-williams_20_b
+PSNR: 10.625291425042002
+SSIM: 0.30704808524526644
+
+Finished!
+2554 positions visited
+224752 comparisons made
+writing file: mockup/mp_maisie-williams_20_m
+PSNR: 10.690327711067493
+SSIM: 0.27416116459241147
+
+Finished!
+3036 positions visited
+267168 comparisons made
+writing file: mockup/mp_maisie-williams_20_s
+PSNR: 5.367930269690692
+SSIM: 0.43202035886829426
+
+We can see that SSIM is *lower* for the larger image, even though it is plainer a better approximation. We should probably blur/shrink before doing SSIM. (possibly for selection as well)
+
+Not surprisingly, MSE selection metric improves PSNR and SSIM metric improves SSIM.
 

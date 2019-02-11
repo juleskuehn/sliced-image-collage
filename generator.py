@@ -31,7 +31,10 @@ class Generator:
         self.overtype = 1 # How many times have all 4 layers been typed
         self.firstPass = True
         self.maxGamma = [0.6,0.75,0.9,1]
-        self.changed = []
+        self.stats = {
+            'positionsVisited': 0,
+            'comparisonsMade': 0
+        }
 
     def getSliceBounds(self, row, col):
         startY = row * self.comboH
@@ -42,7 +45,10 @@ class Generator:
 
 
     # Finding best character that is BR at (row, col)
+    # If the character is already placed there, return False
+    # Otherwise, place it (update comboGrid and mockup) and return True
     def putBestAdj(self, row, col):
+        self.stats['positionsVisited'] += 1
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         targetSlice = self.targetImg[startY:endY, startX:endX]
         # Brighten the target to match maximum typable in first overtype
@@ -116,6 +122,7 @@ class Generator:
         scores2 = {}
         origGrid = self.comboGrid.grid.copy()
         for char in chars:
+            self.stats['comparisonsMade'] += 1
             self.comboGrid.put(row, col, char.id)
             newMockup = self.compositeAdj(row, col)
             # Score the composite
@@ -126,6 +133,7 @@ class Generator:
             elif self.compareMode == 'blend':
                 scores[char.id] = compare_mse(targetSlice, newMockup) 
                 scores2[char.id] = -1 * compare_ssim(targetSlice, newMockup) + 1
+                self.stats['comparisonsMade'] += 1
             else:
                 print('generator: invalid compareMode')
                 exit()
@@ -211,14 +219,20 @@ class Generator:
             while len(self.positions) > 0 or len(dirtyLinearPositions()) > 0:
                 yield 1
 
+        printEvery = 50
 
         def animate(frame):
+            if frame % printEvery == 0:
+                print(self.stats['positionsVisited'], 'positions visited')
+                print(self.stats['comparisonsMade'], 'comparisons made')
+                print(len(dirtyLinearPositions()), 'dirty positions remaining')
+                print('---')
             if len(self.positions) == 0:
                 print("Finished pass")
-                self.comboGrid.printDirty()
-                print(self.comboGrid)
+                # self.comboGrid.printDirty()
+                # print(self.comboGrid)
                 self.positions += dirtyLinearPositions(randomize=randomOrder)
-                print("dirty:", len(self.positions))
+                # print("dirty:", len(self.positions))
             row, col = self.positions.pop(0)
             if self.putBestAdj(row, col):
                 ax1.clear()
@@ -226,10 +240,15 @@ class Generator:
 
         # numFrames = (len(self.positions)-4)*(len(compareModes)+1+numAdjustPasses)
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=30, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
-        ani = animation.FuncAnimation(fig, animate, repeat=False, frames=genFrames(), interval=1)
+        writer = Writer(fps=60, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
+        ani = animation.FuncAnimation(fig, animate, repeat=False, frames=10000, interval=1)
         if show:
             plt.show()
         else:
             ani.save(mockupFn+'.mp4', writer=writer)
+
+        print("Finished!")
+        print(self.stats['positionsVisited'], 'positions visited')
+        print(self.stats['comparisonsMade'], 'comparisons made')
+
         return self.comboGrid

@@ -70,7 +70,8 @@ generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
 
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
-                        show=show, mockupFn=mockupFn, gamma=gamma)
+                        show=show, mockupFn=mockupFn, gamma=gamma,
+                        randomOrder=False, randomInit=True)
 # THIS IS THE LINE THAT MATTERS
 
 
@@ -82,6 +83,11 @@ if targetPadding > 0: # Crop and resize mockup to match target image
     mockupImg = mockupImg[:-targetPadding, :]
 resized = cv2.resize(mockupImg, dsize=(targetImg.shape[1],targetImg.shape[0]), interpolation=cv2.INTER_AREA)
 cv2.imwrite(mockupFn+'.png', resized)
+
+############################
+# Calculate scores on result
+print("PSNR:", compare_psnr(resized, targetImg))
+print("SSIM:", compare_ssim(resized, targetImg))
 
 # Overlay the original image for comparison
 # cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(resized,0.5,targetImg,0.5,0))
