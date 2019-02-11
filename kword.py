@@ -20,17 +20,22 @@ from kword_util import *
 
 args = sys.argv
 
-sourceFn = args[1]
-targetFn = args[2]
-slicesX = int(args[3])
-slicesY = int(args[4])
-rowLength = int(args[5])
-c = int(args[6])
-shrinkX = int(args[7])
-shrinkY = int(args[8])
-numAdjust = int(args[9])
+# Hardcoding the charset params for convenience
+sourceFn = 'hermes-darker.png'
+targetFn = args[1]
+slicesX = 79
+slicesY = 7
+rowLength = int(args[2])
+c = 1
+shrinkX = 1
+shrinkY = 1
+modes = args[3]
+numAdjust = int(args[4])
+
+print(args)
+
 dither = 'dither' in args
-preview = 'preview' in args
+show = 'show' in args
 
 #################
 # Prepare charset
@@ -50,6 +55,7 @@ cropSettings = {
     'shrinkY': shrinkY
 }
 charSet = CharSet(padded, cropSettings)
+mockupFn = f"mockup/mp_{targetFn.split('.')[-2][1:]}_{rowLength}_{modes}"
 
 ######################
 # Prepare target image
@@ -60,12 +66,14 @@ resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, cropped[0].sha
 # Generate mockup (the part that really matters!)
 generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
-generator.generateLayers(compareModes=['blend','mse','mse','mse'], numAdjustPasses=numAdjust)
+
+# THIS IS THE LINE THAT MATTERS
+generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust, show=show)
+# THIS IS THE LINE THAT MATTERS
 
 
 ###################
 # Save mockup image
-mockupFn = f"mockup/mp_{sourceFn.split('.')[-2][1:]}_{targetFn.split('.')[-2][1:]}_{rowLength}"
 print("writing file:",mockupFn)
 mockupImg = generator.mockupImg
 if targetPadding > 0: # Crop and resize mockup to match target image

@@ -848,3 +848,33 @@ Updates to terminology:
 - "Char location": Combogrid location in which char is BR char.
 - "Overtyped char": List of chars selected for a char location.
 
+2019-02-10
+
+Finding great references today, especially "Structure based ascii art"
+ - new metric worth trying AISS
+
+TODO:
+ - Implement dirty bit algorithm
+
+cool algorithm for selection:
+- select a random char and place it.
+- select the first character that improves things and place it (overtop).
+- repeat for other 2 layers. then back at the top, looking for replacement.
+(i'm already doing this, but with the "best" character each time).
+
+i thought this would be more like a "jiggle" towards stability
+(some local optima will emerge no matter what i do)
+
+variations:
+- first random char meeting a tolerance, or "best of first x random chars"
+- or starting in a sorted list of chars at the average value to fill
+ - then binary search
+
+ USAGE:
+python kword.py .\hemingwayCrop.png 20 bbb 2 show
+Arguments are:
+    <target image path>
+    <row length>
+    <mode for each pass (blend, mse, ssim)> 
+    <number adjustments to optimize first pass>
+    <show (or no argument to save animation)>

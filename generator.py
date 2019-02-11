@@ -30,7 +30,7 @@ class Generator:
         self.numLayers = 0 # How many times has the image been typed
         self.overtype = 1 # How many times have all 4 layers been typed
         self.firstPass = True
-        self.maxGamma = [0.7,0.8,0.9,0.95]
+        self.maxGamma = [0.75,0.75,0.9,1]
         self.changed = []
 
     def getSliceBounds(self, row, col):
@@ -195,8 +195,15 @@ class Generator:
         return min(scores, key=scores.get)
 
 
-    def generateLayers(self, compareModes=['mse'], numAdjustPasses=0):
+    def generateLayers(self, compareModes=['m'], numAdjustPasses=0, show=True):
         
+        modeDict = {
+            'm':'mse',
+            's':'ssim',
+            'b':'blend'
+        }
+        compareModes = [modeDict[c] for c in compareModes]
+
         def linearPositions(layerID):
             startRow = 0
             startCol = 0
@@ -282,6 +289,8 @@ class Generator:
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=60, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
         ani = animation.FuncAnimation(fig, animate, repeat=False, frames=numFrames, interval=1)
-        ani.save('mp_adj.mp4', writer=writer)
-        # plt.show()
+        if show:
+            plt.show()
+        else:
+            ani.save('mockup/mp_adj.mp4', writer=writer)
         return self.comboGrid
