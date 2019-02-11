@@ -25,17 +25,17 @@ sourceFn = 'hermes-darker.png'
 targetFn = args[1]
 slicesX = 79
 slicesY = 7
-rowLength = int(args[2])
+rowLength = int(args[3])
 c = 1
 shrinkX = 1
 shrinkY = 1
-modes = args[3]
-numAdjust = int(args[4])
+modes = args[2]
+numAdjust = 1
 
 print(args)
 
 dither = 'dither' in args
-show = 'show' in args
+show = not 'save' in args
 
 #################
 # Prepare charset
@@ -68,7 +68,8 @@ generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding)
 
 # THIS IS THE LINE THAT MATTERS
-generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust, show=show)
+generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
+                        show=show, mockupFn=mockupFn)
 # THIS IS THE LINE THAT MATTERS
 
 

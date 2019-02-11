@@ -871,10 +871,9 @@ variations:
  - then binary search
 
  USAGE:
-python kword.py .\hemingwayCrop.png 20 bbb 2 show
+python kword.py .\hemingwayCrop.png b 20 show
 Arguments are:
     <target image path>
-    <row length>
     <mode for each pass (blend, mse, ssim)> 
-    <number adjustments to optimize first pass>
+    <row length>
     <show (or no argument to save animation)>

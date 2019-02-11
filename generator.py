@@ -30,7 +30,7 @@ class Generator:
         self.numLayers = 0 # How many times has the image been typed
         self.overtype = 1 # How many times have all 4 layers been typed
         self.firstPass = True
-        self.maxGamma = [0.75,0.75,0.9,1]
+        self.maxGamma = [0.6,0.75,0.9,1]
         self.changed = []
 
     def getSliceBounds(self, row, col):
@@ -42,65 +42,6 @@ class Generator:
 
 
     # Finding best character that is BR at (row, col)
-    def putBest(self, row, col):
-        startX, startY, endX, endY = self.getSliceBounds(row, col)
-        targetSlice = self.targetImg[startY:endY, startX:endX]
-        mockupSlice = self.mockupImg[startY:endY, startX:endX]
-        if self.compareMode == 'mse':
-            # Brighten the target depending on how many layers have been typed
-            gamma = 0.25
-            if self.numLayers > 1:
-                gamma += 0.2*(self.numLayers-1)
-            if self.overtype > 1:
-                gamma = self.maxGamma[self.overtype-1]
-            # print(gamma)
-            targetSlice = gammaCorrect(targetSlice, gamma)
-        # Get ID of best match
-        bestMatch = self.getBest(targetSlice, mockupSlice) 
-        self.comboGrid.put(row, col, bestMatch)
-        self.mockupImg[startY:endY, startX:endX] = self.composite(
-                        mockupSlice, self.charSet.getByID(bestMatch).cropped)
-
-
-    def composite(self, img1, img2):
-        def toFloat(img):
-            return np.array(img / 255, dtype="float32")
-
-        return np.array(toFloat(img1) * toFloat(img2) * 255, dtype='uint8')
-
-    # Try compositing different characters onto a copy of the mockupSlice
-    # Compare each to the targetSlice
-    # Return the id of the best matching character
-    def getBest(self, targetSlice, mockupSlice):
-        # TODO speed up search by taking advantage of sorted order
-        chars = self.charSet.getAll()
-        scores = {}
-        scores2 = {}
-        for char in chars:
-            newMockup = self.composite(mockupSlice, char.cropped)
-            # Score the composite
-            if self.compareMode == 'mse':
-                scores[char.id] = compare_mse(targetSlice, newMockup)
-            elif self.compareMode == 'ssim':
-                scores[char.id] = -1 * compare_ssim(targetSlice, newMockup)
-            elif self.compareMode == 'blend':
-                scores[char.id] = compare_mse(targetSlice, newMockup) 
-                scores2[char.id] = -1 * compare_ssim(targetSlice, newMockup) + 1
-            else:
-                print('generator: invalid compareMode')
-                exit()
-
-        if self.compareMode == 'blend':
-            fMSE=self.numLayers/sum(scores.values())
-            fSSIM=max(0,(4-self.numLayers))/sum(scores2.values())
-            for k in scores:
-                scores[k] = scores[k]*fMSE + scores2[k]*fSSIM
-
-        # TODO return scores along with winning char ID for later use
-        return min(scores, key=scores.get)
-
-
-    # Finding best character that is BR at (row, col)
     def putBestAdj(self, row, col):
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         targetSlice = self.targetImg[startY:endY, startX:endX]
@@ -108,15 +49,18 @@ class Generator:
         if self.compareMode == 'mse':
             targetSlice = gammaCorrect(targetSlice, self.maxGamma[0])
         # Get ID of best match
-        bestMatch = self.getBestAdj(targetSlice, row, col) 
+        bestMatch = self.getBestAdj(targetSlice, row, col)
         # print(bestMatch)
         # Has it changed?
-        if self.comboGrid.get(row, col)['BR'] != bestMatch:
+        
+        if self.comboGrid.get(row, col)[3] != bestMatch:
+            # print(self.comboGrid.get(row, col), bestMatch)
             self.comboGrid.put(row, col, bestMatch)
-            # In subsequent passes, only need to check chars affected by swap
-            self.changed.append((row, col))
-
-        self.mockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col)
+            self.mockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col)
+            return True
+        else:
+            self.comboGrid.clean(row, col)
+            return False
 
 
     # Uses combos to store already composited "full" (all 4 layers)
@@ -124,26 +68,27 @@ class Generator:
     def compositeAdj(self, row, col):
         
         def getIndices(cDict):
-            t = cDict['TL'], cDict['TR'], cDict['BL'], cDict['BR']
+            t = cDict[0], cDict[1], cDict[2], cDict[3]
             # print(cDict)
             return t
 
         def getChars(cDict):
             return (
-                self.charSet.getByID(cDict['TL']),
-                self.charSet.getByID(cDict['TR']),
-                self.charSet.getByID(cDict['BL']),
-                self.charSet.getByID(cDict['BR'])
+                self.charSet.getByID(cDict[0]),
+                self.charSet.getByID(cDict[1]),
+                self.charSet.getByID(cDict[2]),
+                self.charSet.getByID(cDict[3])
             )
         
         qs = {} # Quadrants
 
-        for posID in ['TL', 'TR', 'BL', 'BR']:
+        # TL , TR, BL, BR
+        for posID in [0, 1, 2, 3]:
             aRow = row
             aCol = col
-            if posID in ['TR', 'BR']:
+            if posID in [1, 3]:
                 aCol += 1
-            if posID in ['BL', 'BR']:
+            if posID in [2, 3]:
                 aRow += 1
             idx = getIndices(self.comboGrid.get(aRow, aCol))
             combo = self.comboSet.getCombo(*idx)
@@ -155,10 +100,10 @@ class Generator:
 
         # Stitch quadrants together
         img = np.full((self.comboH*2, self.comboW*2), 255, dtype='uint8')
-        img[:img.shape[0]//2, :img.shape[1]//2] = qs['TL'].img
-        img[:img.shape[0]//2, img.shape[1]//2:] = qs['TR'].img
-        img[img.shape[0]//2:, :img.shape[1]//2] = qs['BL'].img
-        img[img.shape[0]//2:, img.shape[1]//2:] = qs['BR'].img
+        img[:img.shape[0]//2, :img.shape[1]//2] = qs[0].img
+        img[:img.shape[0]//2, img.shape[1]//2:] = qs[1].img
+        img[img.shape[0]//2:, :img.shape[1]//2] = qs[2].img
+        img[img.shape[0]//2:, img.shape[1]//2:] = qs[3].img
         return img
 
 
@@ -170,6 +115,7 @@ class Generator:
         chars = self.charSet.getAll()
         scores = {}
         scores2 = {}
+        origGrid = self.comboGrid.grid.copy()
         for char in chars:
             self.comboGrid.put(row, col, char.id)
             newMockup = self.compositeAdj(row, col)
@@ -185,6 +131,8 @@ class Generator:
                 print('generator: invalid compareMode')
                 exit()
 
+        self.comboGrid.grid = origGrid
+
         if self.compareMode == 'blend':
             fMSE=self.numLayers/sum(scores.values())
             fSSIM=max(0,(4-self.numLayers))/sum(scores2.values())
@@ -195,7 +143,8 @@ class Generator:
         return min(scores, key=scores.get)
 
 
-    def generateLayers(self, compareModes=['m'], numAdjustPasses=0, show=True):
+    def generateLayers(self, compareModes=['m'], numAdjustPasses=0,
+                        show=True, mockupFn='mp_untitled'):
         
         modeDict = {
             'm':'mse',
@@ -203,20 +152,25 @@ class Generator:
             'b':'blend'
         }
         compareModes = [modeDict[c] for c in compareModes]
+        
 
-        def linearPositions(layerID):
-            startRow = 0
-            startCol = 0
-            endRow = self.rows - 1
-            endCol = self.cols - 1
-            if layerID in ['BL', 'BR']:
-                startRow = 1
-            if layerID in ['TR', 'BR']:
-                startCol = 1
+        def dirtyLinearPositions(randomize=True):
             positions = []
-            for row in range(startRow, endRow, 2):
-                for col in range(startCol, endCol, 2):
-                    positions.append((row, col))
+            for layerID in [0, 3, 1, 2]:
+                startRow = 0
+                startCol = 0
+                endRow = self.rows - 1
+                endCol = self.cols - 1
+                if layerID in [2, 3]:
+                    startRow = 1
+                if layerID in [1, 3]:
+                    startCol = 1
+                for row in range(startRow, endRow, 2):
+                    for col in range(startCol, endCol, 2):
+                        if self.comboGrid.isDirty(row,col):
+                            positions.append((row, col))
+            if randomize:
+                np.random.shuffle(positions)
             return positions
 
         def setupFig():
@@ -238,59 +192,34 @@ class Generator:
         self.compareMode = compareModes.pop(0)
         # For top left layer, start at 0,0. For bottom left 1,0. Etc.
         # Using None to indicate when we are switching to another layer
-        positions = linearPositions('TL') + [None]
-        positions += linearPositions('BR') + [None]
-        positions += linearPositions('TR') + [None]
-        positions += linearPositions('BL') + [None]
-        self.positions = positions[:]
+        self.positions = dirtyLinearPositions()
 
         fig, ax1 = setupFig()
         self.adjustPass = 0
 
-        def animate(frame):
-            pos = self.positions.pop(0)
-            if pos == None:
-                print('numLayers:',self.numLayers,'len(self.positions):', len(self.positions),
-                        'adjustPass',self.adjustPass, 'overtype', self.overtype)
-                # New staggered layer
-                self.numLayers += 1
-                print('Finished layer', self.numLayers)
-                if len(self.positions) == 0:
-                    # Check if we need to make an adjustment pass
-                    if self.adjustPass < numAdjustPasses and self.firstPass:
-                        self.adjustPass += 1
-                        print('Starting adjustment pass', self.adjustPass)
-                        self.numLayers -= 4
-                        self.positions = positions[:]
-                    elif len(compareModes) > 0:
-                        # print(self.comboGrid)
-                        self.adjustPass = 0
-                        # New overtype set (another 4 layers)
-                        self.overtype += 1
-                        print('Starting overtype', self.overtype)
-                        self.numLayers = 0
-                        self.compareMode = compareModes.pop(0)
-                        self.firstPass = False
-                        self.comboGrid = ComboGrid(self.rows, self.cols)
-                        self.positions = positions[:]
-                if len(self.positions) > 0:
-                    pos = self.positions.pop(0)
-                else:
-                    return
-            row, col = pos
-            if not self.adjustPass:
-                self.putBest(row, col)
-            else:
-                self.putBestAdj(row, col)
-            ax1.clear()
-            ax1.imshow(self.mockupImg, cmap='gray')
+        def genFrames():
+            while len(self.positions) > 0 or len(dirtyLinearPositions()) > 0:
+                yield 1
 
-        numFrames = (len(positions)-4)*(len(compareModes)+1+numAdjustPasses)
+
+        def animate(frame):
+            if len(self.positions) == 0:
+                print("Finished pass")
+                self.comboGrid.printDirty()
+                print(self.comboGrid)
+                self.positions += dirtyLinearPositions()
+                print("dirty:", len(self.positions))
+            row, col = self.positions.pop(0)
+            if self.putBestAdj(row, col):
+                ax1.clear()
+                ax1.imshow(self.mockupImg, cmap='gray')
+
+        # numFrames = (len(self.positions)-4)*(len(compareModes)+1+numAdjustPasses)
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=60, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
-        ani = animation.FuncAnimation(fig, animate, repeat=False, frames=numFrames, interval=1)
+        writer = Writer(fps=30, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
+        ani = animation.FuncAnimation(fig, animate, repeat=False, frames=genFrames(), interval=20)
         if show:
             plt.show()
         else:
-            ani.save('mockup/mp_adj.mp4', writer=writer)
+            ani.save(mockupFn+'.mp4', writer=writer)
         return self.comboGrid
