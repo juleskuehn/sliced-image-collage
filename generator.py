@@ -175,7 +175,7 @@ class Generator:
 
 
     # Only uses MSE
-    def getBestOfRandomK(self, targetSlice, row, col, k=5, binned=True):
+    def getBestOfRandomK(self, targetSlice, row, col, k=5, binned=False):
         # Get score of existing slice
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         mockupSlice = self.mockupImg[startY:endY, startX:endX]
@@ -346,8 +346,8 @@ class Generator:
                 self.positions += dirtyLinearPositions(randomize=randomOrder)
                 # print("dirty:", len(self.positions))
             row, col = self.positions.pop(0)
-            # if self.putBestAdj(row, col):
-            if self.putBetter(row, col, 10): # best of k random
+            if self.putBestAdj(row, col):
+            # if self.putBetter(row, col, 44): # best of k random
             # if self.putBetter(row, col, 1): # first random better
                 ax1.clear()
                 ax1.imshow(self.mockupImg, cmap='gray')

@@ -862,20 +862,18 @@ TODO:
  - Put constraint, variations on it as noted below:
     cool algorithm for selection:
     - DONE select a random char and place it. (random init)
-    * in next layer, select first random character that improves things
-        - place it (overtop).
-    - repeat for other 2 layers. then back at the top, looking for replacement.
-        (i'm already doing this, but with the "best" character each time).
+    * DONE in next layer, select first random character that improves things, place it (overtop).
         i thought this would be more like a "jiggle" towards stability
         (some local optima will emerge no matter what i do)
     variations:
-    - first random char meeting a tolerance, or "best of first x random chars"
-    - or starting in a sorted list of chars at the average value to fill
-    - then binary search
+    - first random char meeting a tolerance, or DONE "best of first x random chars"
+    - DONE starting in a sorted list of chars at the average value to fill
  - DONE Test output image against metrics, report
  - DONE Track number of comparisons, number of swaps
  - Try different image scales to find best row length
  - Integrate AISSM metric
+ - Add a dimension to comboGrid (and dirty grid)
+  - extend compositor, etc. to allow this
 
  USAGE:
 python kword.py .\hemingwayCrop.png b 0.7 20 show
@@ -958,4 +956,44 @@ writing file: mockup/mp_maisie-williams_20_m
 PSNR: 10.017930427369475
 SSIM: 0.2631947818619383
 
-Scores are very similar to MSE, but only 1/10 the comparisons!
+Scores are worse, but only 1/10 the comparisons...
+
+putBest (gamma 1):
+
+2281 positions visited
+200728 comparisons made
+writing file: mockup/mp_maisie-williams_20_m
+PSNR: 10.684357812173852
+SSIM: 0.2703459353588924
+
+
+putBest (gamma 0.9):
+2353 positions visited
+207064 comparisons made
+writing file: mockup/mp_maisie-williams_20_m
+PSNR: 10.679842957516382
+SSIM: 0.27663307461622855
+
+
+putFirstBetter (gamma 1):
+6845 positions visited
+361777 comparisons made
+writing file: mockup/mp_maisie-williams_20_m
+PSNR: 10.729757476268514  <----------------- finally break 10.7
+SSIM: 0.2709300009188153
+with random selection order:
+Finished!
+6801 positions visited
+363673 comparisons made
+writing file: mockup/mp_maisie-williams_20_m
+PSNR: 10.710257386046809
+SSIM: 0.2775465777562082
+
+Random selection order never improves things?
+
+putBetter(44) - no bins, just best of 44 random:
+2281 positions visited
+200728 comparisons made
+writing file: mockup/mp_maisie-williams_20_m
+PSNR: 10.684357812173852
+SSIM: 0.2703459353588924
