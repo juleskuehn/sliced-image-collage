@@ -68,6 +68,30 @@ class Generator:
             return False
 
 
+    def putBetter(self, row, col, k):
+        self.stats['positionsVisited'] += 1
+        startX, startY, endX, endY = self.getSliceBounds(row, col)
+        targetSlice = self.targetImg[startY:endY, startX:endX]
+        # Brighten the target to match maximum typable in first overtype
+        targetSlice = gammaCorrect(targetSlice, self.maxGamma)
+        # Get ID of best match
+        if k == 1:
+            bestMatch = self.getFirstBetter(targetSlice, row, col)
+        else:
+            # bestMatch = self.getBestOfRandomK(targetSlice, row, col, k)
+            bestMatch = self.getBestOfClosestK(targetSlice, row, col, k)
+
+        if bestMatch:
+            # print(self.comboGrid.get(row, col), bestMatch)
+            self.comboGrid.put(row, col, bestMatch)
+            self.mockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col)
+            return True
+        else:
+            # print("already good")
+            self.comboGrid.clean(row, col)
+            return False
+
+
     # Uses combos to store already composited "full" (all 4 layers)
     # If combo not already generated, add it to comboSet.
     def compositeAdj(self, row, col):
@@ -148,6 +172,94 @@ class Generator:
 
         # TODO return scores along with winning char ID for later use
         return min(scores, key=scores.get)
+
+
+    # Only uses MSE
+    def getBestOfRandomK(self, targetSlice, row, col, k=5, binned=True):
+        # Get score of existing slice
+        startX, startY, endX, endY = self.getSliceBounds(row, col)
+        mockupSlice = self.mockupImg[startY:endY, startX:endX]
+        curScore = compare_mse(targetSlice, mockupSlice)
+        if binned:
+            chars = self.charSet.getSorted()
+            # Always include space
+            charIdx = [0]
+            for i in range(k):
+                startIdx = max(1, (len(chars)*i)//k)
+                endIdx = (len(chars)*(i+1))//k
+                charIdx.append(np.random.randint(startIdx, endIdx))
+            chars = list(np.array(chars)[charIdx])
+        else:
+            chars = self.charSet.getAll()
+            chars = np.random.choice(chars, k, replace=False)
+        scores = {}
+        origGrid = self.comboGrid.grid.copy()
+        for char in chars:
+            self.stats['comparisonsMade'] += 1
+            self.comboGrid.put(row, col, char.id)
+            newMockup = self.compositeAdj(row, col)
+            # Score the composite
+            scores[char.id] = compare_mse(targetSlice, newMockup)
+
+        self.comboGrid.grid = origGrid
+
+        bestChoice = min(scores, key=scores.get)
+        better = scores[bestChoice] < curScore
+        return bestChoice if better else None
+
+    # Only uses MSE
+    def getBestOfClosestK(self, targetSlice, row, col, k=5):
+        # Get score of existing slice
+        startX, startY, endX, endY = self.getSliceBounds(row, col)
+        mockupSlice = self.mockupImg[startY:endY, startX:endX]
+        curScore = compare_mse(targetSlice, mockupSlice)
+        chars = self.charSet.getSorted()
+        startPos = int((1 - (np.average(targetSlice) / 255)) * len(chars)) - k
+        endPos = startPos + 2*k
+        if startPos < 0:
+            endPos -= startPos
+            startPos = 0
+        if endPos > len(chars):
+            startPos -= endPos - len(chars)
+            endPos = len(chars)
+        # print(startPos, endPos)
+        chars = chars[startPos:endPos]
+        scores = {}
+        origGrid = self.comboGrid.grid.copy()
+        for char in chars:
+            self.stats['comparisonsMade'] += 1
+            self.comboGrid.put(row, col, char.id)
+            newMockup = self.compositeAdj(row, col)
+            # Score the composite
+            scores[char.id] = compare_mse(targetSlice, newMockup)
+
+        self.comboGrid.grid = origGrid
+
+        bestChoice = min(scores, key=scores.get)
+        better = scores[bestChoice] < curScore
+        return bestChoice if better else None
+
+
+    # Only uses MSE
+    def getFirstBetter(self, targetSlice, row, col):
+        # Get score of existing slice
+        startX, startY, endX, endY = self.getSliceBounds(row, col)
+        mockupSlice = self.mockupImg[startY:endY, startX:endX]
+        curScore = compare_mse(targetSlice, mockupSlice)
+        chars = self.charSet.getAll()[:]
+        np.random.shuffle(chars)
+        scores = {}
+        origGrid = self.comboGrid.grid.copy()
+        for char in chars:
+            self.stats['comparisonsMade'] += 1
+            self.comboGrid.put(row, col, char.id)
+            newMockup = self.compositeAdj(row, col)
+            # Score the composite
+            if compare_mse(targetSlice, newMockup) < curScore:
+                self.comboGrid.grid = origGrid
+                return char.id
+        self.comboGrid.grid = origGrid
+        return None
 
 
     def generateLayers(self, compareModes=['m'], numAdjustPasses=0,
@@ -234,13 +346,15 @@ class Generator:
                 self.positions += dirtyLinearPositions(randomize=randomOrder)
                 # print("dirty:", len(self.positions))
             row, col = self.positions.pop(0)
-            if self.putBestAdj(row, col):
+            # if self.putBestAdj(row, col):
+            if self.putBetter(row, col, 10): # best of k random
+            # if self.putBetter(row, col, 1): # first random better
                 ax1.clear()
                 ax1.imshow(self.mockupImg, cmap='gray')
 
         # numFrames = (len(self.positions)-4)*(len(compareModes)+1+numAdjustPasses)
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=60, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
+        writer = Writer(fps=120, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
         ani = animation.FuncAnimation(fig, animate, repeat=False, frames=10000, interval=1)
         if show:
             plt.show()

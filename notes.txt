@@ -950,3 +950,12 @@ We can see that SSIM is *lower* for the larger image, even though it is plainer 
 
 Not surprisingly, MSE selection metric improves PSNR and SSIM metric improves SSIM.
 
+Only comparing random 5 chars (and setting clean if none are better):
+Finished!
+4592 positions visited
+22960 comparisons made
+writing file: mockup/mp_maisie-williams_20_m
+PSNR: 10.017930427369475
+SSIM: 0.2631947818619383
+
+Scores are very similar to MSE, but only 1/10 the comparisons!

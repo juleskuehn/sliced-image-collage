@@ -71,7 +71,7 @@ generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
                         show=show, mockupFn=mockupFn, gamma=gamma,
-                        randomOrder=False, randomInit=True)
+                        randomOrder=False, randomInit=False)
 # THIS IS THE LINE THAT MATTERS
 
 
@@ -81,6 +81,7 @@ print("writing file:",mockupFn)
 mockupImg = generator.mockupImg
 if targetPadding > 0: # Crop and resize mockup to match target image
     mockupImg = mockupImg[:-targetPadding, :]
+
 resized = cv2.resize(mockupImg, dsize=(targetImg.shape[1],targetImg.shape[0]), interpolation=cv2.INTER_AREA)
 cv2.imwrite(mockupFn+'.png', resized)
 
