@@ -189,7 +189,9 @@ class Generator:
         for row in range(len(ditherSlice)):
             for col in range(len(ditherSlice[row])):
                 actual = mockupSlice[row, col]
-                target = ditherSlice[row, col]
+                desired = ditherSlice[row, col] + residual
+                target = min(255, max(0, ditherSlice[row, col] + residual))
+                residual = desired - target
                 error = target - actual
                 # print(error)
                 # print(ditherSlice.shape, mockupSlice.shape)
@@ -205,7 +207,7 @@ class Generator:
 
                 weightIdx = []
                 for i, j, dist in adjIdx:
-                    adjVal = ditherSlice[i, j]
+                    adjVal = ditherImg[startY+i, startX+j]
                     # Darken slices which are already darker, and vice-versa
                     # Affect closer slices more
                     weight = (adjVal if error > 0 else 255 - adjVal) / (dist**K)
@@ -219,8 +221,8 @@ class Generator:
                     desiredVal = beforeVal + error*weight + residual
                     # Apply corrections per pixel
                     correction = (desiredVal - beforeVal)
-                    ditherSlice[i, j] = min(255, max(0, ditherSlice[i, j] + correction))
-                    afterVal = ditherSlice[i, j]
+                    ditherImg[startY+i, startX+j] = min(255, max(0, ditherSlice[i, j] + correction))
+                    afterVal = ditherImg[startY+i, startX+j]
                     residual = desiredVal - afterVal
                     # print(beforeVal, desiredVal - afterVal)
 
