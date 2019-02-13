@@ -1071,5 +1071,37 @@ Notes for meeting with Prof:
 
 Implementing dither:
 - the coarseness of this approach makes it visually poor
-- need to return to the "fine dither"
+
+* need to return to the "fine dither"
  - iterate over the pixels / coarse pixels in the image as comparing
+  - updating a copy of the targetSlice (not the actual ditherImg)
+  - once done comparing, iterate over the pixels on ditherImg
+ - can just use a different comparison method, compare_mse_dither()
+ - can do FS or Li
+ - as long as it goes ON TOP of existing layers, should work well?
+ - new ditherImg at each layer
+
+
+2019-02-13
+
+Implementing fine dither.
+TODO:
+- DONE Custom scoring metric (drop in for compare_mse)
+ * Adjust asymmetry (prefer overly light to overly dark)
+ - DONE Incorporate signed difference (average of Mockup - Target)
+* Before calling scoring method, apply dither to a copy of ditherImg
+
+Observations:
+- On gradient image, takes a long time to stabilize (maybe never)
+    Linear ordering, blend of MSE and mean error metrics:
+        176088 comparisons made
+        156 dirty positions remaining
+        PSNR: 12.68036767905309
+- Gradient image reveals that some images will never stabilize 
+ - Try "select only if 10% improvement or better, or keep worse with random prob"
+- Also reveals a selection bug:
+ - the second last row is distorted.
+ * Why?
+
+* Impose a maximum limit on iterations per tile before pinning (entire tile)
+ * need second check where checking "isDirty" to also check "isFixed"
