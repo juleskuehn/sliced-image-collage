@@ -1060,6 +1060,7 @@ Notes for meeting with Prof:
  - A: modify MSE so that it is asymmetric, raise one sign to a factor (instead of squaring)
   - take sign into account
 - Q: Confirm that dirty bit approach is sane
+ - yup, but will definitely find local optima
 - Q: Fast drawing to screen from Python?
 - Q: Getting out of a local minima:
  - "Jiggle" during selection
@@ -1067,4 +1068,8 @@ Notes for meeting with Prof:
 - Q: Some kind of wider area metric?
 - Q: Selecting more than 1 character at once in important areas?
  - Search the complete space
-- 
+
+Implementing dither:
+- the coarseness of this approach makes it visually poor
+- need to return to the "fine dither"
+ - iterate over the pixels / coarse pixels in the image as comparing
