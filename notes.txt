@@ -1089,7 +1089,7 @@ TODO:
 - DONE Custom scoring metric (drop in for compare_mse)
  * Adjust asymmetry (prefer overly light to overly dark)
  - DONE Incorporate signed difference (average of Mockup - Target)
-* Before calling scoring method, apply dither to a copy of ditherImg
+ - DONE Before calling scoring method, apply dither to a copy of ditherImg
 
 Observations:
 - On gradient image, takes a long time to stabilize (maybe never)
@@ -1102,6 +1102,21 @@ Observations:
 - Also reveals a selection bug:
  - the second last row is distorted.
  * Why?
+- Working well with shrink=10 (so, chars are 4x8 pixels roughly)
+- Force inclusion of lightest characters makes a big difference 
+ - Now including lightest 10, plus 5 random. Slow but worth it.
+- With lightest 5, plus random 5, and shrink=10, 20 chars rowLength
+    mp_maisie-williams_20_m_linear_mse_70k
+    
+    1291 dirty positions remaining
+    5348 positions visited
+    70524 comparisons made
+    PSNR: 12.035326383741635
+    SSIM: 0.3573307983510606
+
+TODO:
 
 * Impose a maximum limit on iterations per tile before pinning (entire tile)
  * need second check where checking "isDirty" to also check "isFixed"
+
+* Generate full-res preview (shrunken vs. cropped stuff)

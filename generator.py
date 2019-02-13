@@ -37,6 +37,7 @@ class Generator:
             'comparisonsMade': 0
         }
         self.dither = True
+        self.boostK = 0
 
     def getSliceBounds(self, row, col):
         startY = row * self.comboH
@@ -64,7 +65,8 @@ class Generator:
             self.mockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col)
         else:
             changed = False
-            # self.comboGrid.clean(row, col)
+            # TODO: this prematurely cleans during dither
+            self.comboGrid.clean(row, col)
 
         self.ditherImg = self.applyDither(row, col)
         return changed
@@ -106,7 +108,7 @@ class Generator:
         self.stats['positionsVisited'] += 1
         startX, startY, endX, endY = self.getSliceBounds(row, col)
         
-        bestMatch = self.getBestOfRandomK(row, col, k)
+        bestMatch = self.getBestOfRandomK(row, col, k+self.boostK)
 
         if bestMatch:
             # print(self.comboGrid.get(row, col), bestMatch)
@@ -122,7 +124,6 @@ class Generator:
         return changed
 
 
-        # Only uses MSE
     def getBestOfRandomK(self, row, col, k=5, binned=False):
         
         # Score against temporary ditherImg created for this comparison
@@ -130,15 +131,32 @@ class Generator:
             startX, startY, endX, endY = self.getSliceBounds(row, col)
             targetSlice = ditherImg[startY:endY, startX:endX]
             mockupSlice = self.compositeAdj(row, col)
-            # brighten targetSlice
-            err = abs(np.average(targetSlice/self.maxGamma - mockupSlice))
+            # brighten targetSlice and compare
+            avgErr = abs(np.average(targetSlice/self.maxGamma - mockupSlice))
             targetSlice = gammaCorrect(targetSlice, self.maxGamma)
             mse = np.sqrt(compare_mse(targetSlice, mockupSlice))
-            # print('err:',err,'mse:',mse)
-            return err + mse
+            # Another metric: quadrant differences
+            h, w = mockupSlice.shape
+            mockupTLavg = np.average(mockupSlice[:h//2, :w//2])
+            mockupTRavg = np.average(mockupSlice[:h//2, w//2:])
+            mockupBLavg = np.average(mockupSlice[h//2:, :w//2])
+            mockupBRavg = np.average(mockupSlice[h//2:, w//2:])
+            targetTLavg = np.average(targetSlice[:h//2, :w//2])
+            targetTRavg = np.average(targetSlice[:h//2, w//2:])
+            targetBLavg = np.average(targetSlice[h//2:, :w//2])
+            targetBRavg = np.average(targetSlice[h//2:, w//2:])
+
+            quadrantErr = (
+                abs(mockupTLavg-targetTLavg) +
+                abs(mockupBLavg-targetBLavg) +
+                abs(mockupBRavg-targetBRavg) +
+                abs(mockupTRavg-targetTRavg)
+                )/4
+            return mse
 
         ditherImg = self.ditherImg
         curScore = compare(row, col, ditherImg)
+        # print('curScore:',curScore)
         if binned:
             chars = self.charSet.getSorted()
             # Always include space
@@ -150,7 +168,9 @@ class Generator:
             chars = list(np.array(chars)[charIdx])
         else:
             chars = self.charSet.getAll()
-            chars = np.random.choice(chars, k, replace=False)
+            # print(chars)
+            chars = list(np.random.choice(chars, k, replace=False))
+            chars = chars + self.charSet.getAll()[:5]
         scores = {}
         origGrid = self.comboGrid.grid.copy()
         for char in chars:
@@ -168,31 +188,31 @@ class Generator:
 
 
     # Return updated copy of the dither image based on current selection
-    def applyDither(self, row, col, amount=0.5):
+    def applyDither(self, row, col, amount=0.3):
         # print("Begin dither")
         ditherImg = self.ditherImg.copy()
-
+    
         startX, startY, endX, endY = self.getSliceBounds(row, col)
-        ditherSlice = ditherImg[startY:endY, startX:endX]
-        mockupSlice = self.mockupImg[startY:endY, startX:endX]
-        ditherDone = np.zeros(ditherSlice.shape, dtype=np.bool)
+        ditherDone = np.zeros(ditherImg.shape, dtype=np.bool)
 
         # Li dither by pixel
         residual = 0
-        h, w = ditherSlice.shape
+        h, w = ditherImg.shape
         K = 2.6 # Hyperparam
-        M = 5   # Mask size
+        M = 7   # Mask size
         c = M//2
 
         # Calculate error between chosen combo and target subslice
         # Per pixel
-        for row in range(len(ditherSlice)):
-            for col in range(len(ditherSlice[row])):
-                actual = mockupSlice[row, col]
-                desired = ditherSlice[row, col] + residual
-                target = min(255, max(0, ditherSlice[row, col] + residual))
-                residual = desired - target
-                error = target - actual
+        for row in range(startY, endY):
+            for col in range(startX, endX):
+                # print(row, col)
+                actual = self.mockupImg[row, col]
+                # desired = ditherImg[row, col] + residual
+                # target = min(255, max(0, ditherImg[row, col] + residual))
+                # residual = desired - target
+                target = ditherImg[row, col] + residual
+                error = (target - actual)*amount
                 # print(error)
                 # print(ditherSlice.shape, mockupSlice.shape)
                 # Get adjacent pixels which aren't chosen already, checking bounds
@@ -204,10 +224,10 @@ class Generator:
                             adjIdx.append(
                                 (i, j, np.linalg.norm(np.array([i,j])-np.array([row,col])))
                             )
-
+                # print(adjIdx)
                 weightIdx = []
                 for i, j, dist in adjIdx:
-                    adjVal = ditherImg[startY+i, startX+j]
+                    adjVal = ditherImg[i, j]
                     # Darken slices which are already darker, and vice-versa
                     # Affect closer slices more
                     weight = (adjVal if error > 0 else 255 - adjVal) / (dist**K)
@@ -218,14 +238,17 @@ class Generator:
                     # Normalize weights since not all slices will be adjustable
                     weight /= totalWeight
                     # Overall we want to reach this level with the slice:
-                    desiredVal = beforeVal + error*weight + residual
+                    # desiredVal = beforeVal + error*weight + residual
+                    desiredVal = beforeVal + error*weight
                     # Apply corrections per pixel
                     correction = (desiredVal - beforeVal)
-                    ditherImg[startY+i, startX+j] = min(255, max(0, ditherSlice[i, j] + correction))
-                    afterVal = ditherImg[startY+i, startX+j]
-                    residual = desiredVal - afterVal
+                    ditherImg[i, j] = min(255, max(0, ditherImg[i, j] + correction))
+                    afterVal = ditherImg[i, j]
+                    # residual = desiredVal - afterVal
                     # print(beforeVal, desiredVal - afterVal)
-
+                
+                ditherDone[row, col] = True
+                ditherImg[i, j] = self.targetImg[i, j]
         # print("end dither")
         return ditherImg
         
@@ -279,24 +302,38 @@ class Generator:
                         show=True, mockupFn='mp_untitled', gamma=1,
                         randomInit=False, randomOrder=False):
 
-        def dirtyLinearPositions(randomize=False):
+        def dirtyLinearPositions(randomize=False, zigzag=False):
             positions = []
-            for layerID in [0, 3, 1, 2]:
+            for layerID in [0, 3, 2, 1]:
+                r2l = False
                 startRow = 0
                 startCol = 0
                 endRow = self.rows - 1
                 endCol = self.cols - 1
                 if layerID in [2, 3]:
                     startRow = 1
+                    if zigzag:
+                        endRow += 1
                 if layerID in [1, 3]:
                     startCol = 1
-                for row in range(startRow, endRow, 2):
-                    for col in range(startCol, endCol, 2):
-                        if self.comboGrid.isDirty(row,col):
-                            positions.append((row, col))
+                    if zigzag:
+                        endCol += 1
+                    r2l = True
+                if r2l and zigzag:
+                    for row in range(endRow, startRow-1, -2):
+                        for col in range(endCol, startCol-1, -2):
+                            if self.comboGrid.isDirty(row,col):
+                                positions.append((row, col))
+                else:
+                    for row in range(startRow, endRow, 2):
+                        for col in range(startCol, endCol, 2):
+                            if self.comboGrid.isDirty(row,col):
+                                positions.append((row, col))
                 positions.append(None)
             if randomize:
                 np.random.shuffle(positions)
+            print(positions)
+            # exit()
             return positions
 
         def setupFig():
@@ -337,13 +374,14 @@ class Generator:
                 print('---')
             if len(self.positions) == 0:
                 print("Finished pass")
+                self.boostK += 2
                 # self.comboGrid.printDirty()
                 # print(self.comboGrid)
                 self.positions += dirtyLinearPositions(randomize=randomOrder)
                 # print("dirty:", len(self.positions))
             pos = self.positions.pop(0)
             if pos is None:
-                self.ditherImg = self.targetImg.copy()
+                # self.ditherImg = self.targetImg.copy()
                 return
             row, col = pos
             # if self.putBestAdj(row, col):

@@ -27,8 +27,8 @@ slicesX = 79
 slicesY = 7
 rowLength = int(args[4])
 c = 1
-shrinkX = 6
-shrinkY = 6
+shrinkX = 10
+shrinkY = 10
 modes = args[2]
 gamma = float(args[3])
 numAdjust = 1
@@ -60,7 +60,7 @@ mockupFn = f"mockup/mp_{targetFn.split('.')[-2][1:]}_{rowLength}_{modes}"
 
 ######################
 # Prepare target image
-resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, cropped[0].shape, (xChange, yChange))
+resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, charSet.getAll()[0].cropped.shape, (xChange, yChange))
 
 
 #################################################
@@ -70,8 +70,7 @@ generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
 
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
-                        show=show, mockupFn=mockupFn, gamma=gamma,
-                        randomOrder=False, randomInit=False)
+                        show=show, mockupFn=mockupFn, gamma=gamma)
 # THIS IS THE LINE THAT MATTERS
 
 
