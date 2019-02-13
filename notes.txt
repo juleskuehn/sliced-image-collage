@@ -866,14 +866,18 @@ TODO:
         i thought this would be more like a "jiggle" towards stability
         (some local optima will emerge no matter what i do)
     variations:
-    - first random char meeting a tolerance, or DONE "best of first x random chars"
+    - first random char meeting a tolerance
+    - DONE "best of first x random chars"
     - DONE starting in a sorted list of chars at the average value to fill
  - DONE Test output image against metrics, report
  - DONE Track number of comparisons, number of swaps
  - Try different image scales to find best row length
  - Integrate AISSM metric
- - Add a dimension to comboGrid (and dirty grid)
-  - extend compositor, etc. to allow this
+ * Add a dimension to comboGrid (and dirty grid)
+  * extend compositor, etc. to allow this
+  - Q: locking layers.
+   - find best 1, then best 2, then best 3, etc? allow returning?
+   - or just go through every layer 
 
  USAGE:
 python kword.py .\hemingwayCrop.png b 0.7 20 show
@@ -997,3 +1001,70 @@ putBetter(44) - no bins, just best of 44 random:
 writing file: mockup/mp_maisie-williams_20_m
 PSNR: 10.684357812173852
 SSIM: 0.2703459353588924
+
+
+2019-02-12
+Notes for meeting with Prof:
+
+- Summary of findings:
+ - New (one character) approach is better
+ - Multiple passes makes huge improvements in tone and shape
+ - Randomizing selection order or initial state doesn't improve
+ - "First better" has best results
+  - and most comparisons (~360k vs ~200k)
+  - In general can't achieve better than PSNR 10.7 at this point
+ - Optimizing for SSIM improves overall SSIM score, same with MSE
+ - Evaluation of speedups:
+    - Bins worse than random sampling
+    - Near-to-average very bad
+    - Random sampling noticably worse but much faster
+        - PSNR ~10 with 10% of comparisons (random 5)
+        - visits positions twice as much, but few comparisons
+    - Haven't tried shrunken (reduced resolution) or 4-quadrant avg
+    - Haven't tried "next best" chars from previous selections
+
+- Next planned steps:
+ - Dither
+ - Add dimension to comboGrid for overtype passes
+ - Speedups: shrunken images for comparison
+ - AISSM? (Alignment invariant)
+ - Show dirty grid information during animation
+ - Find best row length / scale image / translate image / rotate?
+  - optimize to align (ex) eyes with characters underneath
+  - A: caution... low resolution may not correlate with hi res
+   - try with same method but with random 5 sampling etc ()
+   - or just run a whole bunch of them overnight to store the score improvement
+
+- Q: Usefulness of priority?
+ - A: probably not
+- Q: Dither. Where to start?
+ - Apply at the end of each pass? End of final pass?
+  - Probably only once.
+  - A: yes, only once
+  - A: take mean error (signed) for this pass as the metric
+  - A: Go back to original image before each dither pass
+ - Only on "shading" passes.
+ - Want to be on all 4 layers though, for finer look
+  - Use combos for this? Random order selection?
+  - A: No
+ - 4 quadrant average used for this?
+- Q: Cementing passes before continuing?
+ - "Fixing" layers
+ - A: Makes sense, do after each pass.
+ - find best 1, then best 2, then best 3, etc? allow returning?
+ - or just go through every layer ?
+- Q: SSIM hyperparameters for: exponents l, c and s in L^l * C^c * S^s
+ - A: probably not a huge difference
+- Q: Search algorithms: iterative deepening search etc.
+- Q: Modifying metric to discourage "sins of commission"?
+ - A: modify MSE so that it is asymmetric, raise one sign to a factor (instead of squaring)
+  - take sign into account
+- Q: Confirm that dirty bit approach is sane
+- Q: Fast drawing to screen from Python?
+- Q: Getting out of a local minima:
+ - "Jiggle" during selection
+ - A: Simulated annealing
+- Q: Some kind of wider area metric?
+- Q: Selecting more than 1 character at once in important areas?
+ - Search the complete space
+- 
