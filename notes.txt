@@ -1139,3 +1139,13 @@ TODO:
   - CRASHing after 3 passes, storing too many combos?
    - gets up to 650mb
    - then back to 250mb after clearing combos
+
+- Dithering comparisons (against gradient, etc)
+ - at reduced resolution?
+ - find optimal hyperparms for dither
+- Keep some error on current slice (residual + fraction of error)
+- Prevent error distribution to "clean" areas
+ - create another dirty grid, of dirty *pixels*
+ - check against this grid when dithering
+
+- Automatically calculate best gamma correction for current layer being placed

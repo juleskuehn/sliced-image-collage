@@ -13,9 +13,14 @@ class ComboGrid:
                                 for _ in range(cols)]
                                 for _ in range(rows)], dtype=object)
                                 # Order of self.dirty is TL, TR, BL, BR
+        self.maxFlips = 2
+        self.initDirty()
+
+
+    def initDirty(self):
         self.dirty = np.array([[[1,1,1,1]
-                                for _ in range(cols)]
-                                for _ in range(rows)], dtype=np.bool)
+                                for _ in range(self.cols)]
+                                for _ in range(self.rows)], dtype=np.bool)
         # Space character on edges never changes, so clear dirty bit
         self.dirty[0,:,:2] = 0
         self.dirty[-1,:,2:] = 0
@@ -24,13 +29,12 @@ class ComboGrid:
         self.dirty[:,-1,1] = 0
         self.dirty[:,-1,3] = 0
         self.flips = np.array([[0
-                                for _ in range(cols)]
-                                for _ in range(rows)], dtype='uint8')
+                                for _ in range(self.cols)]
+                                for _ in range(self.rows)], dtype='uint8')
         # self.flips[0,:] = 255
         self.flips[-1,:] = 255
         # self.flips[:,0] = 255
         self.flips[:,-1] = 255
-        self.maxFlips = 3
 
 
     # Put charID at the bottom right of (row,col), bottom left of col+1, etc
@@ -44,7 +48,7 @@ class ComboGrid:
         self.grid[row+1, col+1, 0] = charID
         if chosen:
             self.flips[row, col] += 1
-            print(self.flips[row, col])
+            # print(self.flips[row, col])
         self.setDirty(row, col)
 
 

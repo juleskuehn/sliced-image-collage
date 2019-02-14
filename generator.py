@@ -51,7 +51,7 @@ class Generator:
         self.numLayers = 0 # How many times has the image been typed
         self.overtype = 1 # How many times have all 4 layers been typed
         self.passNumber = 0
-        self.maxGamma = [0.7,0.8,0.9,1,1,1,1,1,1]
+        self.maxGamma = [0.65,0.65,0.8,1,1,1,1]
         self.stats = {
             'positionsVisited': 0,
             'comparisonsMade': 0
@@ -63,6 +63,7 @@ class Generator:
     def load_state(self, fn):
         state = load_object(fn)
         self.comboGrid = state['comboGrid']
+        # self.comboGrid.initDirty()
         self.mockupImg = state['mockupImg']
         self.passNumber = state['passNumber']
         print("Resuming at pass", self.passNumber + 1)
@@ -145,12 +146,15 @@ class Generator:
                 endIdx = (len(chars)*(i+1))//k
                 charIdx.append(np.random.randint(startIdx, endIdx))
             chars = list(np.array(chars)[charIdx])
+        elif self.dither:
+            chars = self.charSet.getSorted()[:10] # brightest (m) chars
+            chars += list(np.array(self.charSet.getSorted())[[21,22,40,62,77,87]]) # add o, O, 0, 8, #, @
         else:
-            chars = self.charSet.getAll()[10:]
+            chars = self.charSet.getSorted()[10:] # all but brightest 10
             # print(chars)
             # print(k)
-            chars = list(np.random.choice(chars, k, replace=False))
-            chars = chars + self.charSet.getAll()[:10]
+            chars = list(np.random.choice(chars, k, replace=False)) # choose k
+            chars = chars + self.charSet.getSorted()[:10] # add brightest 10
         scores = {}
         origGrid = self.comboGrid.grid.copy()
         for char in chars:
@@ -184,7 +188,7 @@ class Generator:
         if mode == 'li':
             # Li dither by pixel
             K = 2.6 # Hyperparam
-            M = self.shrunkenComboH+self.shrunkenComboW   # Mask size
+            M = max(self.shrunkenComboH, self.shrunkenComboW)   # Mask size
             if M % 2 == 0:
                 M += 1
             # print(M)
@@ -208,7 +212,8 @@ class Generator:
                     for i in range(max(0,row-c), min(h, row+c+1)):
                         for j in range(max(0,col-c), min(w, col+c+1)):
                             # print(i,j)
-                            if (i, j) != (row, col) and not ditherDone[i, j]:
+                            # if (i, j) != (row, col) and not ditherDone[i, j]:
+                            if (i, j) != (row, col):
                                 adjIdx.append(
                                     (i, j, np.linalg.norm(np.array([i,j])-np.array([row,col])))
                                 )
@@ -315,26 +320,27 @@ class Generator:
             positions = []
             for layerID in [0, 3, 1, 2]:
                 startIdx = len(positions)
-                r2l = False
+                # r2l = False if np.random.rand() < 0.5 else True
                 startRow = 0
                 startCol = 0
                 endRow = self.rows - 1
                 endCol = self.cols - 1
                 if layerID in [2, 3]:
                     startRow = 1
-                    r2l = True
+                    # r2l = True
                 if layerID in [1, 3]:
                     startCol = 1
                 for row in range(startRow, endRow, 2):
                     for col in range(startCol, endCol, 2):
-                        if self.dither and self.comboGrid.isDitherDirty(row, col):
+                        # if self.dither and self.comboGrid.isDitherDirty(row, col):
+                        #     positions.append((row, col))
+                        # elif self.comboGrid.isDirty(row,col):
+                        if self.comboGrid.isDirty(row,col):
                             positions.append((row, col))
-                        elif self.comboGrid.isDirty(row,col):
-                            positions.append((row, col))
-                        else:
-                            self.comboGrid.clean(row, col)
-                if r2l and zigzag:
-                    positions[startIdx:len(positions)] = positions[len(positions)-1:startIdx-1:-1]
+                        # else:
+                        #     self.comboGrid.clean(row, col)
+                # if r2l and zigzag:
+                    # positions[startIdx:len(positions)] = positions[len(positions)-1:startIdx-1:-1]
                 if len(positions) > 0:
                     positions.append(None)
             if randomize:
@@ -352,7 +358,7 @@ class Generator:
             'd':'dither'
         }
         compareModes = [modeDict[c] for c in compareModes]
-        for _ in range(self.passNumber - 1):
+        for _ in range(self.passNumber):
             compareModes.pop(0)
         # self.maxGamma = gamma
         self.compareMode = compareModes.pop(0)
@@ -360,7 +366,8 @@ class Generator:
             self.dither = True
         else:
             self.dither = False
-        self.positions = dirtyLinearPositions(randomize=randomOrder)
+        # self.positions = dirtyLinearPositions(randomize=randomOrder)
+        self.positions = []
 
         # Initialize randomly if desired
         numChars = len(self.charSet.getAll())
@@ -389,6 +396,7 @@ class Generator:
                 # self.boostK += 2
                 self.comboGrid.printDirty()
                 # print(self.comboGrid)
+                # Clear at every new pass of 4:
                 self.ditherImg = self.shrunkenTargetImg.copy()
                 self.positions += dirtyLinearPositions(randomize=randomOrder)
                 # print("dirty:", len(self.positions))
@@ -411,11 +419,12 @@ class Generator:
 
             pos = self.positions.pop(0)
             if pos is None:
-                # self.ditherImg = self.targetImg.copy()
+                # Clear at every new overlap layer:
+                # self.ditherImg = self.shrunkenTargetImg.copy()
                 return
             row, col = pos
             # if self.putBestAdj(row, col):
-            if self.putBetter(row, col, 5 if self.dither else 25): # best of k random
+            if self.putBetter(row, col, 25 if self.dither else 45): # best of k random
             # if self.putBetter(row, col, 1): # first random better
                 ax[0].clear()
                 ax[0].imshow(self.mockupImg, cmap='gray')

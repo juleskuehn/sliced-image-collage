@@ -30,12 +30,13 @@ c = 1
 shrinkX = int(args[4])
 shrinkY = int(args[4])
 modes = args[2]
-resume = args[5] if len(args) > 5 else None
+resume = args[5] if len(args) > 5 and args[5] != 'save' else None
+# resume = None
 numAdjust = 1
 
 print(args)
 
-dither = 'dither' in args
+# dither = 'dither' in args
 show = not 'save' in args
 
 #################
@@ -68,6 +69,16 @@ print('shrunkenTarget.shape', shrunkenTarget.shape)
 print('resizedTarget.shape', resizedTarget.shape)
 
 
+# Save characters
+import os
+d = os.getcwd() + '\\chars'
+filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
+for f in filesToRemove:
+    os.remove(f) 
+for i, char in enumerate(charSet.getSorted()):
+    cv2.imwrite('chars/padded_'+str(i)+'.png', char.cropped)
+
+
 #################################################
 # Generate mockup (the part that really matters!)
 generator = Generator(resizedTarget, shrunkenTarget, charSet, targetShape=targetImg.shape,
@@ -82,6 +93,7 @@ generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
 # THIS IS THE LINE THAT MATTERS
 
 
+
 ###################
 # Save mockup image
 print("writing file:",mockupFn)
@@ -94,17 +106,8 @@ cv2.imwrite(mockupFn+'.png', resized)
 
 ############################
 # Calculate scores on result
-# print("PSNR:", compare_psnr(resized, targetImg))
-# print("SSIM:", compare_ssim(resized, targetImg))
+print("PSNR:", compare_psnr(resized, targetImg))
+print("SSIM:", compare_ssim(resized, targetImg))
 
 # Overlay the original image for comparison
 # cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(resized,0.5,targetImg,0.5,0))
-
-# # Save characters
-# import os
-# d = os.getcwd() + '\\chars'
-# filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
-# for f in filesToRemove:
-#     os.remove(f) 
-# for i, char in enumerate(padded):
-#     cv2.imwrite('chars/padded_'+str(i)+'.png', char)
