@@ -14,12 +14,8 @@ class Char:
             cropSettings['yCropPos']:cropSettings['yCropPos']+croppedSizeY,
             cropSettings['xCropPos']:cropSettings['xCropPos']+croppedSizeX
         ]
-        shrunkenSizeX = (self.cropped.shape[1]*2)//(cropSettings['shrinkX']*2)
-        shrunkenSizeY = (self.cropped.shape[0]*2)//(cropSettings['shrinkY']*2)
-        if shrunkenSizeX % 2 != 0:
-            shrunkenSizeX += 1
-        if shrunkenSizeY % 2 != 0:
-            shrunkenSizeY += 1
+        shrunkenSizeX = self.cropped.shape[1]//cropSettings['shrinkX']
+        shrunkenSizeY = self.cropped.shape[0]//cropSettings['shrinkY']
         self.shrunken = cv2.resize(
             self.cropped, dsize=(shrunkenSizeX, shrunkenSizeY), interpolation=cv2.INTER_AREA)
         self.avg = np.average(self.cropped)
@@ -29,8 +25,8 @@ class Char:
         self.BLavg = np.average(self.cropped[h//2:, :w//2])
         self.BRavg = np.average(self.cropped[h//2:, w//2:])
         # Force shrinking
-        self.cropped = self.shrunken
-        print(shrunkenSizeX, shrunkenSizeY)
+        # self.cropped = self.shrunken
+        # print(shrunkenSizeX, shrunkenSizeY)
 
     def __str__(self):
         return (

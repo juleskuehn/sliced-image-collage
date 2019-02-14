@@ -1107,7 +1107,7 @@ Observations:
  - Now including lightest 10, plus 5 random. Slow but worth it.
 - With lightest 5, plus random 5, and shrink=10, 20 chars rowLength
     mp_maisie-williams_20_m_linear_mse_70k
-    
+
     1291 dirty positions remaining
     5348 positions visited
     70524 comparisons made
@@ -1119,4 +1119,23 @@ TODO:
 * Impose a maximum limit on iterations per tile before pinning (entire tile)
  * need second check where checking "isDirty" to also check "isFixed"
 
-* Generate full-res preview (shrunken vs. cropped stuff)
+- DONE Generate full-res preview (shrunken vs. cropped stuff)
+ * Fix cropping bug on full-res mockup
+ * Fix dirty positions that never clear bug
+
+- DONE Allow multiple passes again, with final layer being a dither layer
+ - DONE Needs a new compositing method, compositeOnTop
+ - DONE ComboGrid can just be blanked out each time (for now)
+
+- FS Dither
+ - Test
+ - Will only work when selecting in linear order (unless make zigzag variant)
+
+- Saving Progress
+ - it goes SO slow
+  - why are non-dither layers going slow? two plots?
+ - save generator state after each pass (including images, comboGrid)
+  - this would allow further tweaking of previous passes!
+  - CRASHing after 3 passes, storing too many combos?
+   - gets up to 650mb
+   - then back to 250mb after clearing combos

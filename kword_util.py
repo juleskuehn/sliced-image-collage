@@ -121,13 +121,14 @@ def chop_charset(fn='hermes.png', numX=79, numY=7, startX=0, startY=0, xPad=0, y
     # Need to resize charset such that stepX and stepY are each multiples of 2
     # After this, we can shrink without loss of proportion
     # shrinkFactor = 2
-    newStepX = ceil(stepX/shrinkX) * shrinkX
-    newStepY = ceil(stepY/shrinkY) * shrinkY
-    # Ensure multiple of 2
-    if newStepX % 2 == 1:
+    newStepX = ceil(stepX/shrinkX)
+    newStepY = ceil(stepY/shrinkY)
+    if newStepX % 2 != 0:
         newStepX += 1
-    if newStepY % 2 == 1:
+    if newStepY % 2 != 0:
         newStepY += 1
+    newStepX *= shrinkX
+    newStepY *= shrinkY
 
     xChange = stepX / newStepX
     yChange = stepY / newStepY

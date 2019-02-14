@@ -60,13 +60,18 @@ mockupFn = f"mockup/mp_{targetFn.split('.')[-2][1:]}_{rowLength}_{modes}"
 
 ######################
 # Prepare target image
-resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, charSet.getAll()[0].cropped.shape, (xChange, yChange))
+shrunkenTarget, shrunkenTargetPadding = resizeTarget(targetImg, rowLength, charSet.get(0).shrunken.shape, (xChange, yChange))
+print('shrunken char shape', charSet.get(0).shrunken.shape)
+# resizedCharShape = charSet.get(0).shrunken.shape[0] * shrinkY, charSet.get(0).shrunken.shape[1] * shrinkX
+resizedTarget, targetPadding = resizeTarget(targetImg, rowLength, charSet.get(0).cropped.shape, (xChange, yChange))
+print('shrunkenTarget.shape', shrunkenTarget.shape)
+print('resizedTarget.shape', resizedTarget.shape)
 
 
 #################################################
 # Generate mockup (the part that really matters!)
-generator = Generator(resizedTarget, charSet, targetShape=targetImg.shape,
-                                    targetPadding=targetPadding)
+generator = Generator(resizedTarget, shrunkenTarget, charSet, targetShape=targetImg.shape,
+                                    targetPadding=targetPadding, shrunkenTargetPadding=shrunkenTargetPadding)
 
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
@@ -86,8 +91,8 @@ cv2.imwrite(mockupFn+'.png', resized)
 
 ############################
 # Calculate scores on result
-print("PSNR:", compare_psnr(resized, targetImg))
-print("SSIM:", compare_ssim(resized, targetImg))
+# print("PSNR:", compare_psnr(resized, targetImg))
+# print("SSIM:", compare_ssim(resized, targetImg))
 
 # Overlay the original image for comparison
 # cv2.imwrite(mockupFn+'c.png', cv2.addWeighted(resized,0.5,targetImg,0.5,0))

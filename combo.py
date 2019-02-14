@@ -11,10 +11,10 @@ class Combo:
         self.BR = BR
         self.img = self.genComposite(shrink)
         self.avg = np.average(self.img)
-        self.shrunken = cv2.resize(self.img,
-            dsize=(self.TL.shrunken.shape[1],self.TL.shrunken.shape[0]),
-            interpolation=cv2.INTER_AREA
-        )
+        # self.shrunken = cv2.resize(self.img,
+        #     dsize=(self.TL.shrunken.shape[1],self.TL.shrunken.shape[0]),
+        #     interpolation=cv2.INTER_AREA
+        # )
 
     # charset is the list of char slices from which combos were generated
     def genComposite(self, shrink):
@@ -33,16 +33,17 @@ class Combo:
         def getBRq(img):
             return img[img.shape[0]//2:, img.shape[1]//2:]
 
-        TLimg = self.TL.shrunken if shrink else self.TL.cropped 
-        TRimg = self.TR.shrunken if shrink else self.TR.cropped 
-        BLimg = self.BL.shrunken if shrink else self.BL.cropped 
-        BRimg = self.BR.shrunken if shrink else self.BR.cropped 
+        # Always composite from full-size image (not shrunken)
+        TLimg = self.TL.cropped 
+        TRimg = self.TR.cropped 
+        BLimg = self.BL.cropped 
+        BRimg = self.BR.cropped 
         TLc = toFloat(getBRq(TLimg))
         TRc = toFloat(getBLq(TRimg))
         BLc = toFloat(getTRq(BLimg))
         BRc = toFloat(getTLq(BRimg))
         img = TLc * TRc * BLc * BRc
-        return np.array(img * 255, dtype='uint8')
+        return img
 
 class ComboSet:
     # Container class with useful methods
