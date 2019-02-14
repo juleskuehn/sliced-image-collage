@@ -4,12 +4,21 @@ import timeit
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-
 from skimage.measure import compare_ssim, compare_mse
+import pickle
+
 from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
 from kword_util import genMockup, gammaCorrect
+
+def save_object(obj, filename):
+    with open(filename, 'wb') as output:  # Overwrites any existing file.
+        pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
+
+def load_object(filename):
+    with open(filename, 'rb') as input:
+        return pickle.load(input)
 
 class Generator:
 
@@ -41,14 +50,22 @@ class Generator:
         self.compareMode = 'mse'
         self.numLayers = 0 # How many times has the image been typed
         self.overtype = 1 # How many times have all 4 layers been typed
-        self.firstPass = True
-        self.maxGamma = [0.6,0.75,0.9,1]
+        self.passNumber = 0
+        self.maxGamma = [0.7,0.8,0.9,1,1,1,1,1,1]
         self.stats = {
             'positionsVisited': 0,
             'comparisonsMade': 0
         }
         self.dither = dither
         self.boostK = 0
+
+
+    def load_state(self, fn):
+        state = load_object(fn)
+        self.comboGrid = state['comboGrid']
+        self.mockupImg = state['mockupImg']
+        self.passNumber = state['passNumber']
+        print("Resuming at pass", self.passNumber + 1)
 
 
     def getSliceBounds(self, row, col, shrunken=False):
@@ -67,7 +84,7 @@ class Generator:
         if bestMatch:
             # print(self.comboGrid.get(row, col), bestMatch)
             changed = True
-            self.comboGrid.put(row, col, bestMatch)
+            self.comboGrid.put(row, col, bestMatch, chosen=True)
             if self.dither:
                 startX, startY, endX, endY = self.getSliceBounds(row, col, shrunken=True)
                 self.shrunkenMockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col, shrunken=True)
@@ -96,7 +113,7 @@ class Generator:
             # print('t', targetSlice.shape, 'm', mockupSlice.shape)
             # brighten targetSlice and compare
             # avgErr = abs(np.average(targetSlice/self.maxGamma - mockupSlice))
-            targetSlice = gammaCorrect(targetSlice, self.maxGamma)
+            targetSlice = gammaCorrect(targetSlice, self.maxGamma[self.passNumber])
             mse = np.sqrt(compare_mse(targetSlice, mockupSlice))
             # Another metric: quadrant differences
             h, w = mockupSlice.shape
@@ -129,11 +146,11 @@ class Generator:
                 charIdx.append(np.random.randint(startIdx, endIdx))
             chars = list(np.array(chars)[charIdx])
         else:
-            chars = self.charSet.getAll()
+            chars = self.charSet.getAll()[10:]
             # print(chars)
             # print(k)
             chars = list(np.random.choice(chars, k, replace=False))
-            chars = chars + self.charSet.getAll()[:5]
+            chars = chars + self.charSet.getAll()[:10]
         scores = {}
         origGrid = self.comboGrid.grid.copy()
         for char in chars:
@@ -147,9 +164,9 @@ class Generator:
         self.comboGrid.grid = origGrid
 
         bestChoice = min(scores, key=scores.get)
-        # Has to be 5% better
-        betterRatio = 0.05
-        print((curScore-scores[bestChoice])/curScore)
+        # Has to be some amount better
+        betterRatio = 0
+        # print((curScore-scores[bestChoice])/curScore)
         better = scores[bestChoice] < curScore and (curScore-scores[bestChoice])/curScore > betterRatio
         return bestChoice if better else None
 
@@ -167,7 +184,10 @@ class Generator:
         if mode == 'li':
             # Li dither by pixel
             K = 2.6 # Hyperparam
-            M = 7   # Mask size
+            M = self.shrunkenComboH+self.shrunkenComboW   # Mask size
+            if M % 2 == 0:
+                M += 1
+            # print(M)
             c = M//2
 
             # Calculate error between chosen combo and target subslice
@@ -288,7 +308,7 @@ class Generator:
 
 
     def generateLayers(self, compareModes=['m'], numAdjustPasses=0,
-                        show=True, mockupFn='mp_untitled', gamma=1,
+                        show=True, mockupFn='mp_untitled',
                         randomInit=False, randomOrder=False):
 
         def dirtyLinearPositions(randomize=False, zigzag=True):
@@ -307,11 +327,16 @@ class Generator:
                     startCol = 1
                 for row in range(startRow, endRow, 2):
                     for col in range(startCol, endCol, 2):
-                        if self.comboGrid.isDirty(row,col):
+                        if self.dither and self.comboGrid.isDitherDirty(row, col):
                             positions.append((row, col))
+                        elif self.comboGrid.isDirty(row,col):
+                            positions.append((row, col))
+                        else:
+                            self.comboGrid.clean(row, col)
                 if r2l and zigzag:
                     positions[startIdx:len(positions)] = positions[len(positions)-1:startIdx-1:-1]
-                positions.append(None)
+                if len(positions) > 0:
+                    positions.append(None)
             if randomize:
                 np.random.shuffle(positions)
             # print(positions)
@@ -327,7 +352,9 @@ class Generator:
             'd':'dither'
         }
         compareModes = [modeDict[c] for c in compareModes]
-        self.maxGamma = gamma
+        for _ in range(self.passNumber - 1):
+            compareModes.pop(0)
+        # self.maxGamma = gamma
         self.compareMode = compareModes.pop(0)
         if self.compareMode == 'dither':
             self.dither = True
@@ -360,12 +387,20 @@ class Generator:
             if len(self.positions) == 0:
                 print("Finished pass")
                 # self.boostK += 2
-                # self.comboGrid.printDirty()
+                self.comboGrid.printDirty()
                 # print(self.comboGrid)
+                self.ditherImg = self.shrunkenTargetImg.copy()
                 self.positions += dirtyLinearPositions(randomize=randomOrder)
                 # print("dirty:", len(self.positions))
-                if len(self.positions) < 10: 
+                if len(self.positions) < 1:
                     # There were no more dirty positions: next pass!
+                    print("Finished adjusting pass", self.passNumber, ", saving.")
+                    save_object({
+                        'mockupImg': self.mockupImg,
+                        'comboGrid': self.comboGrid,
+                        'passNumber': self.passNumber
+                        }, 'pass_'+str(self.passNumber))
+                    self.passNumber += 1
                     self.fixedMockupImg = self.mockupImg.copy()
                     self.compareMode = compareModes.pop(0)
                     self.dither = self.compareMode == 'dither'

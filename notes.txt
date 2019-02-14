@@ -1116,8 +1116,8 @@ Observations:
 
 TODO:
 
-* Impose a maximum limit on iterations per tile before pinning (entire tile)
- * need second check where checking "isDirty" to also check "isFixed"
+- DONE Impose a maximum limit on iterations per tile before pinning (entire tile)
+ - DONE need second check where checking "isDirty" to also check "isFixed" (maxFlips)
 
 - DONE Generate full-res preview (shrunken vs. cropped stuff)
  * Fix cropping bug on full-res mockup
@@ -1131,10 +1131,10 @@ TODO:
  - Test
  - Will only work when selecting in linear order (unless make zigzag variant)
 
-- Saving Progress
+- DONE Saving Progress
  - it goes SO slow
-  - why are non-dither layers going slow? two plots?
- - save generator state after each pass (including images, comboGrid)
+  * why are non-dither layers going slow? two plots?
+ - DONE save generator state after each pass (including images, comboGrid)
   - this would allow further tweaking of previous passes!
   - CRASHing after 3 passes, storing too many combos?
    - gets up to 650mb

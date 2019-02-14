@@ -23,10 +23,18 @@ class ComboGrid:
         self.dirty[:,0,2] = 0
         self.dirty[:,-1,1] = 0
         self.dirty[:,-1,3] = 0
+        self.flips = np.array([[0
+                                for _ in range(cols)]
+                                for _ in range(rows)], dtype='uint8')
+        # self.flips[0,:] = 255
+        self.flips[-1,:] = 255
+        # self.flips[:,0] = 255
+        self.flips[:,-1] = 255
+        self.maxFlips = 3
 
 
     # Put charID at the bottom right of (row,col), bottom left of col+1, etc
-    def put(self, row, col, charID):
+    def put(self, row, col, charID, chosen=False):
         # if not self.isDirty(row, col):
         #     print("error! putting char at clean pos")
         #     exit()
@@ -34,6 +42,9 @@ class ComboGrid:
         self.grid[row+1, col, 1] = charID
         self.grid[row, col+1, 2] = charID
         self.grid[row+1, col+1, 0] = charID
+        if chosen:
+            self.flips[row, col] += 1
+            print(self.flips[row, col])
         self.setDirty(row, col)
 
 
@@ -48,7 +59,15 @@ class ComboGrid:
     def isDirty(self, row, col):
         dirty = np.sum([1 for bit in self.dirty[row:row+2, col:col+2].flatten() if bit]) > 0
         # print(row, col, 'is', dirty)
-        return dirty
+        return dirty and self.flips[row, col] <= self.maxFlips
+
+
+    def isDitherDirty(self, row, col):
+        dirty = np.sum([1 for bit in self.dirty[
+            max(0, row-2):min(self.rows,row+4),
+            max(0,col-2):min(self.cols,col+4)].flatten() if bit]) > 0
+        # print(row, col, 'is', dirty)
+        return dirty and self.flips[row, col] <= self.maxFlips
 
 
     def clean(self, row, col):

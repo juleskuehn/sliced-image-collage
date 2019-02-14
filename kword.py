@@ -25,12 +25,12 @@ sourceFn = 'hermes-darker.png'
 targetFn = args[1]
 slicesX = 79
 slicesY = 7
-rowLength = int(args[4])
+rowLength = int(args[3])
 c = 1
-shrinkX = 10
-shrinkY = 10
+shrinkX = int(args[4])
+shrinkY = int(args[4])
 modes = args[2]
-gamma = float(args[3])
+resume = args[5] if len(args) > 5 else None
 numAdjust = 1
 
 print(args)
@@ -73,9 +73,12 @@ print('resizedTarget.shape', resizedTarget.shape)
 generator = Generator(resizedTarget, shrunkenTarget, charSet, targetShape=targetImg.shape,
                                     targetPadding=targetPadding, shrunkenTargetPadding=shrunkenTargetPadding)
 
+if resume is not None:
+    generator.load_state(resume)
+
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
-                        show=show, mockupFn=mockupFn, gamma=gamma)
+                        show=show, mockupFn=mockupFn)
 # THIS IS THE LINE THAT MATTERS
 
 
