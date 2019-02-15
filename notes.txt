@@ -1114,6 +1114,11 @@ Observations:
     PSNR: 12.035326383741635
     SSIM: 0.3573307983510606
 
+- Fine dither on top of MMM with light chars + round chars achieved PSNR ~ 14 !
+- Without any dither, MMMM gets PSNR > 16! So dither is worse when measured at full res.
+ - this is at 20 rowlength, 10 shrink
+
+
 TODO:
 
 - DONE Impose a maximum limit on iterations per tile before pinning (entire tile)
@@ -1139,7 +1144,8 @@ TODO:
   - CRASHing after 3 passes, storing too many combos?
    - gets up to 650mb
    - then back to 250mb after clearing combos
-
+ * TODO Fix loading Bugs
+ 
 - Dithering comparisons (against gradient, etc)
  - at reduced resolution?
  - find optimal hyperparms for dither
@@ -1149,3 +1155,4 @@ TODO:
  - check against this grid when dithering
 
 - Automatically calculate best gamma correction for current layer being placed
+- CLEANUP: Split generator into more files, more functions

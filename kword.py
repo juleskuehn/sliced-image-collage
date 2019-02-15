@@ -16,7 +16,7 @@ from combo import Combo, ComboSet
 from combo_grid import ComboGrid
 from char import Char, CharSet
 from generator import Generator
-from kword_util import *
+from kword_utils import chop_charset, resizeTarget
 
 args = sys.argv
 
