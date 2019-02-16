@@ -39,22 +39,58 @@ def putBetter(generator, row, col, k):
     return changed
 
 
+def initRandomPositions(generator):
+    #Initialize randomly if desired
+    numChars = len(generator.charSet.getAll())
+    while len(generator.positions) > 0:
+        pos = generator.positions.pop(0)
+        if pos is None:
+            continue
+        row, col = pos
+        startX, startY, endX, endY = getSliceBounds(generator, row, col)
+        generator.comboGrid.put(row, col, np.random.randint(1, numChars+1))
+        generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col)
+
+
 def getBestOfRandomK(generator, row, col, k=5, binned=False):
     # Score against temporary ditherImg created for this comparison
     def compare(row, col, ditherImg):
-        startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=generator.dither)
+        
         if generator.dither:
-            targetSlice = ditherImg[startY:endY, startX:endX]
-        else:
-            targetSlice = generator.targetImg[startY:endY, startX:endX]
-        mockupSlice = compositeAdj(generator, row, col, shrunken=generator.dither)
-        # print('t', targetSlice.shape, 'm', mockupSlice.shape)
-        # brighten targetSlice and compare
+            startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=True)
+            ditherSlice = ditherImg[startY:endY, startX:endX]
+            shrunkenMockupSlice = compositeAdj(generator, row, col, shrunken=True)
+            # print('ditherSlice', ditherSlice.shape)
+            # print('shrunkMock', shrunkenMockupSlice.shape)
+        
+        startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
+        targetSlice = generator.targetImg[startY:endY, startX:endX]
+        mockupSlice = compositeAdj(generator, row, col, shrunken=False)
+        # print('targetSlice', targetSlice.shape)
+        # print('mockupSlice', mockupSlice.shape)
+
         # avgErr = abs(np.average(targetSlice/generator.maxGamma - mockupSlice))
-        targetSlice = gammaCorrect(targetSlice, generator.maxGamma[generator.passNumber])
-        rmse = np.sqrt(compare_mse(targetSlice, mockupSlice))
+        score = 0
+        if generator.compareMode in ['ssim']:
+            # targetSlice = gammaCorrect(targetSlice, generator.gamma)
+            score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
+            if generator.dither:
+                ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
+                score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
+        elif generator.compareMode in ['mse', 'dither']:
+            targetSlice = gammaCorrect(targetSlice, generator.gamma)
+            score = np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
+            if generator.dither:
+                ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
+                score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
+        elif generator.compareMode in ['blend']:
+            score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
+            # print('ssim score:', score)
+            targetSlice = gammaCorrect(targetSlice, generator.gamma)
+            score *= np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
+            # print('combined score:', score)
         # Another metric: quadrant differences
-        h, w = mockupSlice.shape
+        # h, w = mockupSlice.shape
         # mockupTLavg = np.average(mockupSlice[:h//2, :w//2])
         # mockupTRavg = np.average(mockupSlice[:h//2, w//2:])
         # mockupBLavg = np.average(mockupSlice[h//2:, :w//2])
@@ -69,29 +105,30 @@ def getBestOfRandomK(generator, row, col, k=5, binned=False):
         #     abs(mockupBRavg-targetBRavg) +
         #     abs(mockupTRavg-targetTRavg)
         #     )/4
-        return rmse
+        return score
 
     ditherImg = generator.ditherImg
     curScore = compare(row, col, ditherImg)
     # print('curScore:',curScore)
-    if binned:
-        chars = generator.charSet.getSorted()
-        # Always include space
-        charIdx = [0]
-        for i in range(k):
-            startIdx = max(1, (len(chars)*i)//k)
-            endIdx = (len(chars)*(i+1))//k
-            charIdx.append(np.random.randint(startIdx, endIdx))
-        chars = list(np.array(chars)[charIdx])
-    elif generator.dither:
-        chars = generator.charSet.getSorted()[:10] # brightest (m) chars
-        chars += list(np.array(generator.charSet.getSorted())[[21,22,40,62,77,87]]) # add o, O, 0, 8, #, @
-    else:
-        chars = generator.charSet.getSorted()[10:] # all but brightest 10
-        # print(chars)
-        # print(k)
-        chars = list(np.random.choice(chars, k, replace=False)) # choose k
-        chars = chars + generator.charSet.getSorted()[:10] # add brightest 10
+    # if binned:
+    #     chars = generator.charSet.getSorted()
+    #     # Always include space
+    #     charIdx = [0]
+    #     for i in range(k):
+    #         startIdx = max(1, (len(chars)*i)//k)
+    #         endIdx = (len(chars)*(i+1))//k
+    #         charIdx.append(np.random.randint(startIdx, endIdx))
+    #     chars = list(np.array(chars)[charIdx])
+    # elif generator.dither:
+    #     chars = generator.charSet.getSorted()[:10] # brightest (m) chars
+    #     # chars += list(np.array(generator.charSet.getSorted())[[21,22,40,62,77,87]]) # add o, O, 0, 8, #, @
+    # else:
+    #     chars = generator.charSet.getSorted()[10:] # all but brightest 10
+    #     # print(chars)
+    #     # print(k)
+    #     chars = list(np.random.choice(chars, k, replace=False)) # choose k
+    #     chars = chars + generator.charSet.getSorted()[:10] # add brightest 10
+    chars = generator.charSet.getSorted()
     scores = {}
     origGrid = generator.comboGrid.grid.copy()
     for char in chars:
@@ -125,7 +162,9 @@ def applyDither(generator, row, col, amount=0.3, mode='li'):
     if mode == 'li':
         # Li dither by pixel
         K = 2.6 # Hyperparam
-        M = ceil((generator.shrunkenComboH+generator.shrunkenComboW)/2)   # Mask size
+        # Mask size
+        M = 3
+        # M = max(3, ceil((generator.shrunkenComboH+generator.shrunkenComboW)/4))
         if M % 2 == 0:
             M += 1
         # print(M)

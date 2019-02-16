@@ -21,18 +21,28 @@ from kword_utils import chop_charset, resizeTarget
 args = sys.argv
 
 # Hardcoding the charset params for convenience
+# sourceFn = 'marker-shapes.png'
+# slicesX = 12
+# slicesY = 2
+# xPad = 0
+# yPad = 0
 sourceFn = 'hermes-darker.png'
-targetFn = args[1]
 slicesX = 79
 slicesY = 7
-rowLength = int(args[3])
+xPad = 4
+yPad = 4
+targetFn = args[1]
+rowLength = int(args[2])
 c = 1
-shrinkX = int(args[4])
-shrinkY = int(args[4])
-modes = args[2]
-resume = args[5] if len(args) > 5 and args[5] != 'save' else None
+shrinkX = int(args[3])
+shrinkY = int(args[3])
+mode = args[4]
+gamma = float(args[5])
+resume = args[6] if len(args) > 6 and args[6] not in ['save','rs','ri'] else None
 # resume = None
 numAdjust = 1
+randomInit = 'ri' in args
+randomOrder = 'ro' in args
 
 print(args)
 
@@ -43,8 +53,6 @@ show = not 'save' in args
 # Prepare charset
 targetImg = cv2.imread(targetFn, cv2.IMREAD_GRAYSCALE)
 print("target photo has shape", targetImg.shape)
-xPad = 4
-yPad = 4
 cropped, padded, (xCropPos, yCropPos), (xChange, yChange) = chop_charset(
     fn=sourceFn, numX=slicesX, numY=slicesY, startX=0, startY=0,
     xPad=xPad, yPad=yPad, shrinkX=shrinkX, shrinkY=shrinkY, blankSpace=True)
@@ -57,7 +65,7 @@ cropSettings = {
     'shrinkY': shrinkY
 }
 charSet = CharSet(padded, cropSettings)
-mockupFn = f"mockup/mp_{targetFn.split('.')[-2][1:]}_{rowLength}_{modes}"
+mockupFn = f"mockup/mp_{targetFn.split('.')[-2][1:]}_{rowLength}_{mode}"
 
 ######################
 # Prepare target image
@@ -88,8 +96,9 @@ if resume is not None:
     generator.load_state(resume)
 
 # THIS IS THE LINE THAT MATTERS
-generator.generateLayers(compareModes=modes, numAdjustPasses=numAdjust,
-                        show=show, mockupFn=mockupFn)
+generator.generateLayers(compareMode=mode, numAdjustPasses=numAdjust, gamma=gamma, 
+                        show=show, mockupFn=mockupFn, randomInit=randomInit,
+                        randomOrder=randomOrder)
 # THIS IS THE LINE THAT MATTERS
 
 

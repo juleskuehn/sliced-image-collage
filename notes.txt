@@ -1145,7 +1145,7 @@ TODO:
    - gets up to 650mb
    - then back to 250mb after clearing combos
  * TODO Fix loading Bugs
- 
+
 - Dithering comparisons (against gradient, etc)
  - at reduced resolution?
  - find optimal hyperparms for dither
@@ -1156,3 +1156,11 @@ TODO:
 
 - Automatically calculate best gamma correction for current layer being placed
 - CLEANUP: Split generator into more files, more functions
+
+- TODO bring back SSIM
+- TODO allow range of selector options
+ - for dither passes
+ - BUG can't use SSIM on dither
+ - BUG save/load passes...
+
+- TODO GUI

@@ -11,7 +11,7 @@ from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
 from kword_utils import genMockup, gammaCorrect
-from generator_utils import putBetter
+from generator_utils import putBetter, initRandomPositions
 
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
@@ -52,31 +52,29 @@ class Generator:
         self.numLayers = 0 # How many times has the image been typed
         self.overtype = 1 # How many times have all 4 layers been typed
         self.passNumber = 0
-        self.maxGamma = [0.7,0.8,0.8,1,1,1,1]
+        self.gamma = 1
         self.stats = {
             'positionsVisited': 0,
             'comparisonsMade': 0
         }
         self.dither = dither
         self.boostK = 0
-        self.resumed = False
-
 
     def load_state(self, fn):
         state = load_object(fn)
-        self.comboGrid = state['comboGrid']
+        self.comboGrid = ComboGrid(self.rows, self.cols)
         # self.comboGrid.initDirty()
+        self.fixedMockupImg = state['mockupImg']
         self.mockupImg = state['mockupImg']
         self.passNumber = state['passNumber']
         print("Resuming at pass", self.passNumber + 1)
-        self.resumed = True
 
 
-    def generateLayers(self, compareModes=['m'], numAdjustPasses=0,
-                        show=True, mockupFn='mp_untitled',
+    def generateLayers(self, compareMode='mse', numAdjustPasses=0,
+                        show=True, mockupFn='mp_untitled', gamma=1,
                         randomInit=False, randomOrder=False):
 
-        def dirtyLinearPositions(randomize=False, zigzag=True):
+        def dirtyLinearPositions(randomOrder=False, zigzag=True):
             positions = []
             for layerID in [0, 3, 1, 2]:
                 startIdx = len(positions)
@@ -103,7 +101,7 @@ class Generator:
                     # positions[startIdx:len(positions)] = positions[len(positions)-1:startIdx-1:-1]
                 if len(positions) > 0:
                     positions.append(None)
-            if randomize:
+            if randomOrder:
                 np.random.shuffle(positions)
             # print(positions)
             # exit()
@@ -113,36 +111,22 @@ class Generator:
             fig, ax = plt.subplots(1, 2)
             return fig, ax
 
-        modeDict = {
-            'm':'mse',
-            'd':'dither'
-        }
-        compareModes = [modeDict[c] for c in compareModes]
-        for _ in range(self.passNumber):
-            compareModes.pop(0)
         # self.maxGamma = gamma
-        self.compareMode = compareModes.pop(0)
+        self.compareMode = compareMode
+        self.gamma = gamma
         if self.compareMode == 'dither':
+            print("!NO!U!N!OU!N!")
             self.dither = True
         else:
             self.dither = False
-        # self.positions = dirtyLinearPositions(randomize=randomOrder)
-        self.positions = []
+        self.positions = dirtyLinearPositions(randomOrder=randomOrder)
+        # self.positions = []
 
-        # Initialize randomly if desired
-        # numChars = len(self.charSet.getAll())
-        # if randomInit:
-        #     while len(self.positions) > 0:
-        #         pos = self.positions.pop(0)
-        #         if pos is None:
-        #             continue
-        #         row, col = pos
-        #         startX, startY, endX, endY = getSliceBounds(self, row, col)
-        #         self.comboGrid.put(row, col, np.random.randint(1, numChars+1))
-        #         self.mockupImg[startY:endY, startX:endX] = self.compositeAdj(row, col)
+        if randomInit:
+            initRandomPositions(self)
 
         fig, ax = setupFig()
-        self.adjustPass = 0
+        # self.adjustPass = 0
         printEvery = 50
 
         def animate(frame):
@@ -158,26 +142,23 @@ class Generator:
                 # print(self.comboGrid)
                 # Clear at every new pass of 4:
                 self.ditherImg = self.shrunkenTargetImg.copy()
-                self.positions += dirtyLinearPositions(randomize=randomOrder)
+                self.positions += dirtyLinearPositions(randomOrder==randomOrder)
                 # print("dirty:", len(self.positions))
-                if len(self.positions) < 1:
-                    self.comboGrid = ComboGrid(self.rows, self.cols)
-                    # There were no more dirty positions: next pass!
-                    if not self.resumed:
-                        print("Finished adjusting pass", self.passNumber, ", saving.")
-                        save_object({
-                            'mockupImg': self.mockupImg,
-                            'comboGrid': self.comboGrid,
-                            'passNumber': self.passNumber
-                            }, 'pass_'+str(self.passNumber))
-                        self.resumed = False
+                if len(self.positions) == 0:
                     self.passNumber += 1
-                    self.fixedMockupImg = self.mockupImg.copy()
-                    self.compareMode = compareModes.pop(0)
-                    self.dither = self.compareMode == 'dither'
-                    self.positions = dirtyLinearPositions(randomize=randomOrder)
-                    # Need to reset combos because running out of memory?
-                    self.comboSet = ComboSet()
+                    # There were no more dirty positions: finished!
+                    print("Finished adjusting pass", self.passNumber, ", saving.")
+                    save_object({
+                        'mockupImg': self.mockupImg,
+                        'comboGrid': self.comboGrid,
+                        'passNumber': self.passNumber
+                        }, 'pass_'+str(self.passNumber))
+                    # self.comboGrid = ComboGrid(self.rows, self.cols)
+                    # self.fixedMockupImg = self.mockupImg.copy()
+                    # self.dither = self.compareMode == 'dither'
+                    # self.positions = dirtyLinearPositions(randomize=randomOrder)
+                    # # Need to reset combos because running out of memory?
+                    # self.comboSet = ComboSet()
 
             pos = self.positions.pop(0)
             if pos is None:
@@ -186,7 +167,7 @@ class Generator:
                 return
             row, col = pos
             # if self.putBestAdj(row, col):
-            if putBetter(self, row, col, 25 if self.dither else 45): # best of k random
+            if putBetter(self, row, col, 40) or frame==0:
             # if self.putBetter(row, col, 1): # first random better
                 ax[0].clear()
                 ax[0].imshow(self.mockupImg, cmap='gray')
@@ -205,11 +186,13 @@ class Generator:
         print("Finished!")
         print(self.stats['positionsVisited'], 'positions visited')
         print(self.stats['comparisonsMade'], 'comparisons made')
-
-        save_object({
-            'mockupImg': self.mockupImg,
-            'comboGrid': self.comboGrid,
-            'passNumber': self.passNumber
-            }, 'pass_'+str(self.passNumber)+'_end')
+        
+        # Prevent saving after initial error
+        if self.stats['positionsVisited'] > 50:
+            save_object({
+                'mockupImg': self.mockupImg,
+                'comboGrid': self.comboGrid,
+                'passNumber': self.passNumber
+                }, 'pass_'+str(self.passNumber)+'_end')
 
         return self.comboGrid
