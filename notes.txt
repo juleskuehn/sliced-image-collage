@@ -1164,3 +1164,46 @@ TODO:
  - BUG save/load passes...
 
 - TODO GUI
+
+
+2019-02-15
+
+Getting good results (PSNR 11.76) on 10 character hemingway. SSIM 0.14
+ gamma 0.5, 0.5, 0.65  blend twice then mse.
+On darker versions, PSNR improves as SSIM falls:
+(additional pass of 0.8 MSE)
+PSNR: 12.277825418098026
+SSIM: 0.12201728149927103
+
+
+2019-02-12
+Notes for meeting with prof
+
+Results:
+- Coarse dither is bad
+- Li dither (at reduced resolution) works well
+ - Q: But very slow
+- Dither inherently adds shape error
+ - Q: How to fix?
+  - Chris's suggestion: error correcting pass, penalize distance from other characters
+ - Q: When to reset the dither image?
+- Q: Asymmetrical RMSE not working!!
+- Any attempt to speed up (only select if 1% better, etc) makes it worse
+- PSNR 10.6 on mp_me-contrasty_20_pass2.png (gamma 0.7)
+- 10.7 on pass3 (gamma 0.8)
+- 10.78 on pass4 (gamma 0.9)
+- 10.74 on pass 5 (gamma 1)
+
+Plans:
+- With multiple passes, achieve PSNR > 16
+ - dither always lowers PSNR
+  - Q: do a shrunken comparison for tone?
+  - Q: keeping some error on current slice, rather than dithering
+  - Q: prevent redistribution to "clean" pixels
+- Q: Automatic gamma correction etc. for each layer placed
+- Q: Change optimization metric after initialization with another
+- Q: Resizing to find best translation/zoom:
+ - use ANN Angular / Euclidean on 4 independent layers, for each variation
+ - take variation with best score
+ - Initialize to ANN values
+- GUI (see paper notes)

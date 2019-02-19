@@ -55,20 +55,14 @@ def initRandomPositions(generator):
 def getBestOfRandomK(generator, row, col, k=5, binned=False):
     # Score against temporary ditherImg created for this comparison
     def compare(row, col, ditherImg):
-        
         if generator.dither:
             startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=True)
             ditherSlice = ditherImg[startY:endY, startX:endX]
             shrunkenMockupSlice = compositeAdj(generator, row, col, shrunken=True)
-            # print('ditherSlice', ditherSlice.shape)
-            # print('shrunkMock', shrunkenMockupSlice.shape)
         
         startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
         targetSlice = generator.targetImg[startY:endY, startX:endX]
         mockupSlice = compositeAdj(generator, row, col, shrunken=False)
-        # print('targetSlice', targetSlice.shape)
-        # print('mockupSlice', mockupSlice.shape)
-
         # avgErr = abs(np.average(targetSlice/generator.maxGamma - mockupSlice))
         score = 0
         if generator.compareMode in ['ssim']:
@@ -88,23 +82,15 @@ def getBestOfRandomK(generator, row, col, k=5, binned=False):
             # print('ssim score:', score)
             targetSlice = gammaCorrect(targetSlice, generator.gamma)
             score *= np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
-            # print('combined score:', score)
-        # Another metric: quadrant differences
-        # h, w = mockupSlice.shape
-        # mockupTLavg = np.average(mockupSlice[:h//2, :w//2])
-        # mockupTRavg = np.average(mockupSlice[:h//2, w//2:])
-        # mockupBLavg = np.average(mockupSlice[h//2:, :w//2])
-        # mockupBRavg = np.average(mockupSlice[h//2:, w//2:])
-        # targetTLavg = np.average(targetSlice[:h//2, :w//2])
-        # targetTRavg = np.average(targetSlice[:h//2, w//2:])
-        # targetBLavg = np.average(targetSlice[h//2:, :w//2])
-        # targetBRavg = np.average(targetSlice[h//2:, w//2:])
-        # quadrantErr = (
-        #     abs(mockupTLavg-targetTLavg) +
-        #     abs(mockupBLavg-targetBLavg) +
-        #     abs(mockupBRavg-targetBRavg) +
-        #     abs(mockupTRavg-targetTRavg)
-        #     )/4
+        elif generator.compareMode in ['armse']:
+            # Asymmetric root mean squared error
+            # TODO Broken!
+            targetSlice = gammaCorrect(targetSlice, generator.gamma)
+            offset = 0
+            score = np.sqrt(np.average(np.power(np.array(
+                targetSlice - mockupSlice + offset,
+                dtype='int16'), 2))) / 255
+        # print(score)
         return score
 
     ditherImg = generator.ditherImg
