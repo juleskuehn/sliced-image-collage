@@ -39,6 +39,46 @@ def putBetter(generator, row, col, k):
     return changed
 
 
+def putSimAnneal(generator, row, col):
+    generator.stats['positionsVisited'] += 1
+    bestMatch = getSimAnneal(generator, row, col)
+    if bestMatch:
+        changed = True
+        generator.comboGrid.put(row, col, bestMatch, chosen=True)
+        if generator.dither:
+            startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=True)
+            generator.shrunkenMockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=True)
+        startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
+        if row < generator.mockupRows-1 and col < generator.mockupCols-1:
+            generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=False)
+    else:
+        # print("already good")
+        changed = False
+        # Don't clean with simulated annealing!
+    return changed
+
+
+def getSimAnneal(generator, row, col):
+    # Get score of existing slice
+    startX, startY, endX, endY = getSliceBounds(generator, row, col)
+    mockupSlice = generator.mockupImg[startY:endY, startX:endX]
+    # Don't support dither in this selector
+    curScore = compare(generator, row, col)
+    chars = generator.charSet.getAll()[:]
+    np.random.shuffle(chars)
+    scores = {}
+    origGrid = generator.comboGrid.grid.copy()
+    better = False
+    for char in chars:
+        generator.comboGrid.put(row, col, char.id)
+        # Score the composite
+        if compare(generator, row, col) < curScore:
+            betterChar = char
+            break
+    generator.comboGrid.grid = origGrid
+    return char.id if betterChar else None
+
+
 def initRandomPositions(generator):
     #Initialize randomly if desired
     numChars = len(generator.charSet.getAll())
@@ -52,49 +92,51 @@ def initRandomPositions(generator):
         generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col)
 
 
+def compare(generator, row, col, ditherImg=None):
+    generator.stats['comparisonsMade'] += 1
+    if generator.dither:
+        startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=True)
+        ditherSlice = ditherImg[startY:endY, startX:endX]
+        shrunkenMockupSlice = compositeAdj(generator, row, col, shrunken=True)
+    
+    startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
+    targetSlice = generator.targetImg[startY:endY, startX:endX]
+    mockupSlice = compositeAdj(generator, row, col, shrunken=False)
+    # avgErr = abs(np.average(targetSlice/generator.maxGamma - mockupSlice))
+    score = 0
+    if generator.compareMode in ['ssim']:
+        # targetSlice = gammaCorrect(targetSlice, generator.gamma)
+        score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
+        if generator.dither:
+            ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
+            score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
+    elif generator.compareMode in ['mse', 'dither']:
+        targetSlice = gammaCorrect(targetSlice, generator.gamma)
+        score = np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
+        if generator.dither:
+            ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
+            score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
+    elif generator.compareMode in ['blend']:
+        score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
+        # print('ssim score:', score)
+        targetSlice = gammaCorrect(targetSlice, generator.gamma)
+        score *= np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
+    elif generator.compareMode in ['armse']:
+        # Asymmetric root mean squared error
+        # TODO Broken!
+        targetSlice = gammaCorrect(targetSlice, generator.gamma)
+        offset = 0
+        score = np.sqrt(np.average(np.power(np.array(
+            targetSlice - mockupSlice + offset,
+            dtype='int16'), 2))) / 255
+    # print(score)
+    return score
+
+
 def getBestOfRandomK(generator, row, col, k=5, binned=False):
     # Score against temporary ditherImg created for this comparison
-    def compare(row, col, ditherImg):
-        if generator.dither:
-            startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=True)
-            ditherSlice = ditherImg[startY:endY, startX:endX]
-            shrunkenMockupSlice = compositeAdj(generator, row, col, shrunken=True)
-        
-        startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
-        targetSlice = generator.targetImg[startY:endY, startX:endX]
-        mockupSlice = compositeAdj(generator, row, col, shrunken=False)
-        # avgErr = abs(np.average(targetSlice/generator.maxGamma - mockupSlice))
-        score = 0
-        if generator.compareMode in ['ssim']:
-            # targetSlice = gammaCorrect(targetSlice, generator.gamma)
-            score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
-            if generator.dither:
-                ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
-                score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
-        elif generator.compareMode in ['mse', 'dither']:
-            targetSlice = gammaCorrect(targetSlice, generator.gamma)
-            score = np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
-            if generator.dither:
-                ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
-                score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
-        elif generator.compareMode in ['blend']:
-            score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
-            # print('ssim score:', score)
-            targetSlice = gammaCorrect(targetSlice, generator.gamma)
-            score *= np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
-        elif generator.compareMode in ['armse']:
-            # Asymmetric root mean squared error
-            # TODO Broken!
-            targetSlice = gammaCorrect(targetSlice, generator.gamma)
-            offset = 0
-            score = np.sqrt(np.average(np.power(np.array(
-                targetSlice - mockupSlice + offset,
-                dtype='int16'), 2))) / 255
-        # print(score)
-        return score
-
     ditherImg = generator.ditherImg
-    curScore = compare(row, col, ditherImg)
+    curScore = compare(generator, row, col, ditherImg)
     # print('curScore:',curScore)
     # if binned:
     #     chars = generator.charSet.getSorted()
@@ -118,12 +160,11 @@ def getBestOfRandomK(generator, row, col, k=5, binned=False):
     scores = {}
     origGrid = generator.comboGrid.grid.copy()
     for char in chars:
-        generator.stats['comparisonsMade'] += 1
         generator.comboGrid.put(row, col, char.id)
         if generator.dither:
             ditherImg = applyDither(generator, row, col)
         # Score the composite
-        scores[char.id] = compare(row, col, ditherImg)
+        scores[char.id] = compare(generator, row, col, ditherImg=ditherImg)
 
     generator.comboGrid.grid = origGrid
 

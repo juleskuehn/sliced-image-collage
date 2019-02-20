@@ -1202,8 +1202,26 @@ Plans:
   - Q: prevent redistribution to "clean" pixels
 - Q: Automatic gamma correction etc. for each layer placed
 - Q: Change optimization metric after initialization with another
+
 - Q: Resizing to find best translation/zoom:
  - use ANN Angular / Euclidean on 4 independent layers, for each variation
  - take variation with best score
  - Initialize to ANN values
+
 - GUI (see paper notes)
+
+- basic typing tools
+ - each layer output separately
+  - blocks like "  (6)  " for repeated chars
+ - collate passes together
+  - how to display when you have to type multiple chars? pop out downward..
+   - ex.        M##@%  _3%MM@
+                @
+                4
+                z
+    - M, @, 4, and Z are all typed in the same character location. 
+
+- Simulated annealing
+ - "elementary move" is to go to the next best one
+
+- Use shrink on any pass, not just dither
