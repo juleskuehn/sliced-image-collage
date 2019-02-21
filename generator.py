@@ -11,7 +11,7 @@ from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
 from kword_utils import genMockup, gammaCorrect
-from generator_utils import putBetter, initRandomPositions
+from generator_utils import putBetter, initRandomPositions, putSimAnneal, evaluateMockup
 
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
@@ -59,6 +59,15 @@ class Generator:
         }
         self.dither = dither
         self.boostK = 0
+        # starting temperature for simulated annealing
+        # not sure if this is a good starting point yet...
+        # We will subtract comparisonsMade to a minimum of 0
+        self.initTemp = self.rows * self.cols * 100
+
+
+    def getTemp(self):
+        return max(0.00000001, self.initTemp - self.stats['positionsVisited'])
+
 
     def load_state(self, fn):
         state = load_object(fn)
@@ -134,6 +143,8 @@ class Generator:
                 print(self.stats['positionsVisited'], 'positions visited')
                 print(self.stats['comparisonsMade'], 'comparisons made')
                 print(len(dirtyLinearPositions()), 'dirty positions remaining')
+                print('Temperature: ', self.getTemp())
+                evaluateMockup(self)
                 print('---')
             if len(self.positions) == 0:
                 print("Finished pass")
@@ -167,7 +178,8 @@ class Generator:
                 return
             row, col = pos
             # if self.putBestAdj(row, col):
-            if putBetter(self, row, col, 40) or frame==0:
+            # if putBetter(self, row, col, 40) or frame==0:
+            if putSimAnneal(self, row, col) or frame==0:
             # if self.putBetter(row, col, 1): # first random better
                 ax[0].clear()
                 ax[0].imshow(self.mockupImg, cmap='gray')
