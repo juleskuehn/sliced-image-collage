@@ -62,11 +62,14 @@ class Generator:
         # starting temperature for simulated annealing
         # not sure if this is a good starting point yet...
         # We will subtract comparisonsMade to a minimum of 0
-        self.initTemp = self.rows * self.cols * 100
+        self.initTemp = 0.005
+        self.minTemp = 0.00000001
+        self.tempHistory = []
+        self.psnrHistory = []
 
 
     def getTemp(self):
-        return max(0.00000001, self.initTemp - self.stats['positionsVisited'])
+        return max(self.minTemp, self.initTemp - self.stats['positionsVisited']/(self.rows*self.cols*1000))
 
 
     def load_state(self, fn):
@@ -117,7 +120,7 @@ class Generator:
             return positions
 
         def setupFig():
-            fig, ax = plt.subplots(1, 2)
+            fig, ax = plt.subplots(1, 1)
             return fig, ax
 
         # self.maxGamma = gamma
@@ -144,7 +147,8 @@ class Generator:
                 print(self.stats['comparisonsMade'], 'comparisons made')
                 print(len(dirtyLinearPositions()), 'dirty positions remaining')
                 print('Temperature: ', self.getTemp())
-                evaluateMockup(self)
+                self.psnrHistory.append(evaluateMockup(self))
+                self.tempHistory.append(self.getTemp())
                 print('---')
             if len(self.positions) == 0:
                 print("Finished pass")
@@ -178,13 +182,13 @@ class Generator:
                 return
             row, col = pos
             # if self.putBestAdj(row, col):
-            # if putBetter(self, row, col, 40) or frame==0:
-            if putSimAnneal(self, row, col) or frame==0:
+            if putBetter(self, row, col, 40) or frame==0:
+            # if putSimAnneal(self, row, col) or frame==0:
             # if self.putBetter(row, col, 1): # first random better
-                ax[0].clear()
-                ax[0].imshow(self.mockupImg, cmap='gray')
-            ax[1].clear()
-            ax[1].imshow(self.ditherImg if self.dither else self.targetImg, cmap='gray')
+                ax.clear()
+                ax.imshow(self.mockupImg, cmap='gray')
+            # ax[1].clear()
+            # ax[1].imshow(self.ditherImg if self.dither else self.targetImg, cmap='gray')
 
         # numFrames = (len(self.positions)-4)*(len(compareModes)+1+numAdjustPasses)
         Writer = animation.writers['ffmpeg']
@@ -204,7 +208,9 @@ class Generator:
             save_object({
                 'mockupImg': self.mockupImg,
                 'comboGrid': self.comboGrid,
-                'passNumber': self.passNumber
+                'passNumber': self.passNumber,
+                'psnrHistory': self.psnrHistory,
+                'tempHistory': self.tempHistory
                 }, 'pass_'+str(self.passNumber)+'_end')
 
         return self.comboGrid

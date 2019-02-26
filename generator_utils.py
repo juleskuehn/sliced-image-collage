@@ -55,7 +55,7 @@ def putSimAnneal(generator, row, col):
         # print("already good")
         changed = False
         # Don't clean with simulated annealing unless temperature == 0
-        if generator.getTemp() == 0:
+        if generator.getTemp() <= generator.minTemp*1.5:
             generator.comboGrid.clean(row, col)
     return changed
 
@@ -63,16 +63,21 @@ def putSimAnneal(generator, row, col):
 def getSimAnneal(generator, row, col):
     # Get score of existing slice
     curScore = compare(generator, row, col)
-    char = np.random.choice(generator.charSet.getAll())
+    chars = generator.charSet.getSorted()[:]
+    np.random.shuffle(chars)
     origGrid = generator.comboGrid.grid.copy()
-    generator.comboGrid.put(row, col, char.id)
-    newScore = compare(generator, row, col)
-    generator.comboGrid.grid = origGrid
-    # Note that delta is reversed because we are looking for a minima
-    delta = curScore - newScore
     newChar = None
-    if delta > 0 or np.exp(delta / generator.getTemp()) > np.random.rand():
-        newChar = char.id
+    for char in chars:
+        generator.comboGrid.put(row, col, char.id)
+        newScore = compare(generator, row, col)
+        # Note that delta is reversed because we are looking for a minima
+        delta = curScore - newScore
+        # if delta < 0:
+            # print(np.exp(delta / generator.getTemp())*100)
+        if delta > 0 or np.exp(delta / generator.getTemp()) > np.random.rand():
+            newChar = char.id
+            break
+    generator.comboGrid.grid = origGrid
     return newChar
 
 
@@ -312,16 +317,7 @@ def compositeAdj(generator, row, col, shrunken=False):
     return np.array(img * 255, dtype='uint8')
 
 def evaluateMockup(generator):
-    mockupImg = generator.mockupImg.copy()
-    print('mockupImgShape', mockupImg.shape)
-    print('generator.targetPadding', generator.targetPadding)
-    if generator.targetPadding > 0: # Crop and resize mockup to match target image
-        mockupImg = mockupImg[:-generator.targetPadding, :]
-    print('mockupImgShape', mockupImg.shape)
-    print('generator.targetShape', generator.targetShape)
-    resized = cv2.resize(mockupImg, dsize=(generator.targetShape[1],generator.targetShape[0]), interpolation=cv2.INTER_AREA)
-
-    ############################
-    # Calculate scores on result
-    print("PSNR:", compare_psnr(resized, generator.targetImg))
-    print("SSIM:", compare_ssim(resized, generator.targetImg))
+    psnr = compare_psnr(generator.mockupImg, generator.targetImg)
+    print("PSNR:", psnr)
+    print("SSIM:", compare_ssim(generator.mockupImg, generator.targetImg))
+    return psnr

@@ -63,8 +63,8 @@ class ComboGrid:
     def isDirty(self, row, col):
         dirty = np.sum([1 for bit in self.dirty[row:row+2, col:col+2].flatten() if bit]) > 0
         # print(row, col, 'is', dirty)
-        return dirty and self.flips[row, col] <= self.maxFlips
-
+        # return dirty and self.flips[row, col] <= self.maxFlips
+        return dirty
 
     def isDitherDirty(self, row, col):
         dirty = np.sum([1 for bit in self.dirty[
