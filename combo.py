@@ -50,7 +50,7 @@ class ComboSet:
     # Stores Combos in 4D sparse array for easy filtering by constraint
     def __init__(self, chars=None):
         self.combos = ddict(lambda: ddict(lambda: ddict(lambda: ddict(None))))
-        self.flat = []
+        # self.flat = []
         if chars:
             self.genCombos(chars)
 
@@ -61,7 +61,7 @@ class ComboSet:
                     for BR in chars:
                         combo = Combo(TL, TR, BL, BR)
                         self.combos[TL.id][TR.id][BL.id][BR.id] = combo
-                        self.flat.append(combo)
+                        # self.flat.append(combo)
 
         print("Generated", len(chars)**4, "combos.")
 
@@ -69,7 +69,7 @@ class ComboSet:
     def genCombo(self, TL, TR, BL, BR):
         combo = Combo(TL, TR, BL, BR)
         self.combos[TL.id][TR.id][BL.id][BR.id] = combo
-        self.flat.append(combo)
+        # self.flat.append(combo)
         return combo
 
     # Takes char IDs

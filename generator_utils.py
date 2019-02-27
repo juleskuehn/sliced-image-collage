@@ -18,7 +18,8 @@ def getSliceBounds(generator, row, col, shrunken=False):
 
 def putBetter(generator, row, col, k):
     generator.stats['positionsVisited'] += 1
-    bestMatch = getBestOfRandomK(generator, row, col, k+generator.boostK)
+    # bestMatch = getNextBetter(generator, row, col, mode='sorted')
+    bestMatch = getBestOfRandomK(generator, row, col, k*generator.boostK)
     if bestMatch:
         # print(generator.comboGrid.get(row, col), bestMatch)
         changed = True
@@ -114,7 +115,7 @@ def compare(generator, row, col, ditherImg=None):
             score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
     elif generator.compareMode in ['mse', 'dither']:
         # targetSlice = gammaCorrect(targetSlice, generator.gamma)
-        score = np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
+        score = compare_mse(targetSlice, mockupSlice)
         if generator.dither:
             # ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
             score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
@@ -135,30 +136,35 @@ def compare(generator, row, col, ditherImg=None):
     return score
 
 
+def getNextBetter(generator, row, col, mode='sorted'):
+    curScore = compare(generator, row, col)
+    chars = generator.charSet.getSorted() if mode == 'sorted' else generator.charSet.getChars()
+    if mode == 'random':
+        chars = chars[:]
+        np.random.shuffle(chars)
+    origGrid = generator.comboGrid.grid.copy()
+    betterChoice = None
+    for char in chars:
+        generator.comboGrid.put(row, col, char.id)
+        if generator.dither:
+            ditherImg = applyDither(generator, row, col)
+        # Score the composite
+        if compare(generator, row, col) < curScore:
+            betterChoice = char.id
+            break
+
+    generator.comboGrid.grid = origGrid
+    return betterChoice
+
+
 def getBestOfRandomK(generator, row, col, k=5, binned=False):
     # Score against temporary ditherImg created for this comparison
     ditherImg = generator.ditherImg
     curScore = compare(generator, row, col, ditherImg)
-    # print('curScore:',curScore)
-    # if binned:
-    #     chars = generator.charSet.getSorted()
-    #     # Always include space
-    #     charIdx = [0]
-    #     for i in range(k):
-    #         startIdx = max(1, (len(chars)*i)//k)
-    #         endIdx = (len(chars)*(i+1))//k
-    #         charIdx.append(np.random.randint(startIdx, endIdx))
-    #     chars = list(np.array(chars)[charIdx])
-    # elif generator.dither:
-    #     chars = generator.charSet.getSorted()[:10] # brightest (m) chars
-    #     # chars += list(np.array(generator.charSet.getSorted())[[21,22,40,62,77,87]]) # add o, O, 0, 8, #, @
-    # else:
-    #     chars = generator.charSet.getSorted()[10:] # all but brightest 10
-    #     # print(chars)
-    #     # print(k)
-    #     chars = list(np.random.choice(chars, k, replace=False)) # choose k
-    #     chars = chars + generator.charSet.getSorted()[:10] # add brightest 10
-    chars = generator.charSet.getSorted()
+    chars = generator.charSet.getSorted()[5:] # all but brightest 5
+    chars = list(np.random.choice(chars, k, replace=False)) # choose k
+    chars = chars + generator.charSet.getSorted()[:5] # add brightest 10
+    # chars = generator.charSet.getSorted()
     scores = {}
     origGrid = generator.comboGrid.grid.copy()
     for char in chars:
@@ -171,10 +177,7 @@ def getBestOfRandomK(generator, row, col, k=5, binned=False):
     generator.comboGrid.grid = origGrid
 
     bestChoice = min(scores, key=scores.get)
-    # Has to be some amount better
-    betterRatio = 0
-    # print((curScore-scores[bestChoice])/curScore)
-    better = scores[bestChoice] < curScore and (curScore-scores[bestChoice])/curScore > betterRatio
+    better = scores[bestChoice] < curScore
     return bestChoice if better else None
 
 

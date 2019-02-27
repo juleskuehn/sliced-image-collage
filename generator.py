@@ -58,7 +58,7 @@ class Generator:
             'comparisonsMade': 0
         }
         self.dither = dither
-        self.boostK = 0
+        self.boostK = 1
         # starting temperature for simulated annealing
         # not sure if this is a good starting point yet...
         # We will subtract comparisonsMade to a minimum of 0
@@ -139,7 +139,9 @@ class Generator:
 
         fig, ax = setupFig()
         # self.adjustPass = 0
-        printEvery = 50
+        printEvery = 100
+
+        initK = 5
 
         def animate(frame):
             if frame % printEvery == 0:
@@ -152,7 +154,8 @@ class Generator:
                 print('---')
             if len(self.positions) == 0:
                 print("Finished pass")
-                # self.boostK += 2
+                self.boostK *= 2
+                print("k =", initK * self.boostK)
                 # self.comboGrid.printDirty()
                 # print(self.comboGrid)
                 # Clear at every new pass of 4:
@@ -178,11 +181,12 @@ class Generator:
             pos = self.positions.pop(0)
             if pos is None:
                 # Clear at every new overlap layer:
+                # This doesn't work if randomly ordered
                 # self.ditherImg = self.shrunkenTargetImg.copy()
                 return
             row, col = pos
             # if self.putBestAdj(row, col):
-            if putBetter(self, row, col, 40) or frame==0:
+            if putBetter(self, row, col, initK) or frame==0:
             # if putSimAnneal(self, row, col) or frame==0:
             # if self.putBetter(row, col, 1): # first random better
                 ax.clear()
