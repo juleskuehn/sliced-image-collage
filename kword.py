@@ -26,9 +26,9 @@ args = sys.argv
 # slicesY = 2
 # xPad = 0
 # yPad = 0
-sourceFn = 'smith-corona-dynamic4.png'
-slicesX = 25
-slicesY = 13
+sourceFn = 'sc-3tone.png'
+slicesX = 50
+slicesY = 34
 xPad = 0
 yPad = 0
 # sourceFn = 'hermes-darker.png'
@@ -89,7 +89,7 @@ filesToRemove = [os.path.join(d,f) for f in os.listdir(d)]
 for f in filesToRemove:
     os.remove(f) 
 for i, char in enumerate(charSet.getSorted()):
-    cv2.imwrite('chars/padded_'+str(i)+'.png', char.cropped)
+    cv2.imwrite('chars/'+str(i)+'.png', char.cropped)
 
 
 #################################################

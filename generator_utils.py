@@ -110,23 +110,23 @@ def compare(generator, row, col, ditherImg=None):
         # targetSlice = gammaCorrect(targetSlice, generator.gamma)
         score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
         if generator.dither:
-            ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
+            # ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
             score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
     elif generator.compareMode in ['mse', 'dither']:
-        targetSlice = gammaCorrect(targetSlice, generator.gamma)
+        # targetSlice = gammaCorrect(targetSlice, generator.gamma)
         score = np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
         if generator.dither:
-            ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
+            # ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
             score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
     elif generator.compareMode in ['blend']:
         score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
         # print('ssim score:', score)
-        targetSlice = gammaCorrect(targetSlice, generator.gamma)
+        # targetSlice = gammaCorrect(targetSlice, generator.gamma)
         score *= np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
     elif generator.compareMode in ['armse']:
         # Asymmetric root mean squared error
         # TODO Broken!
-        targetSlice = gammaCorrect(targetSlice, generator.gamma)
+        # targetSlice = gammaCorrect(targetSlice, generator.gamma)
         offset = 0
         score = np.sqrt(np.average(np.power(np.array(
             targetSlice - mockupSlice + offset,

@@ -1176,7 +1176,7 @@ PSNR: 12.277825418098026
 SSIM: 0.12201728149927103
 
 
-2019-02-12
+2019-02-19
 Notes for meeting with prof
 
 Results:
@@ -1221,7 +1221,7 @@ Plans:
                 z
     - M, @, 4, and Z are all typed in the same character location. 
 
-- Simulated annealing
+- DONE Simulated annealing
  - "elementary move" is to go to the next best one
 
 - Use shrink on any pass, not just dither
