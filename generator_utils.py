@@ -18,8 +18,9 @@ def getSliceBounds(generator, row, col, shrunken=False):
 
 def putBetter(generator, row, col, k):
     generator.stats['positionsVisited'] += 1
+    k = min(len(generator.charSet.getAll()) - 5, k*generator.boostK)
+    bestMatch = getBestOfRandomK(generator, row, col, k)
     # bestMatch = getNextBetter(generator, row, col, mode='sorted')
-    bestMatch = getBestOfRandomK(generator, row, col, k*generator.boostK)
     if bestMatch:
         # print(generator.comboGrid.get(row, col), bestMatch)
         changed = True
@@ -163,7 +164,7 @@ def getBestOfRandomK(generator, row, col, k=5, binned=False):
     curScore = compare(generator, row, col, ditherImg)
     chars = generator.charSet.getSorted()[5:] # all but brightest 5
     chars = list(np.random.choice(chars, k, replace=False)) # choose k
-    chars = chars + generator.charSet.getSorted()[:5] # add brightest 10
+    chars = chars + generator.charSet.getSorted()[:5] # add brightest 5
     # chars = generator.charSet.getSorted()
     scores = {}
     origGrid = generator.comboGrid.grid.copy()

@@ -141,7 +141,7 @@ class Generator:
         # self.adjustPass = 0
         printEvery = 100
 
-        initK = 5
+        initK = 10
 
         def animate(frame):
             if frame % printEvery == 0:
