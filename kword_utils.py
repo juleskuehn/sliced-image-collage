@@ -12,6 +12,7 @@ from skimage.measure import compare_ssim, compare_mse, compare_nrmse, compare_ps
 import operator
 
 from combo import Combo
+from generator_utils import compositeAdj, getSliceBounds
 
 
 # Resizes targetImg to be a multiple of character width
@@ -53,36 +54,27 @@ def gammaCorrect(img, gamma=1):
 
 
 # Returns a mockup image, with the same size as the target image
-def genMockup(comboGrid, comboSet, targetShape, targetPadding):
-    gridShape = comboGrid.grid.shape
-    comboShape = comboSet.byIdx[0].img.shape
-    # Generate output image
-    mockup = np.zeros((gridShape[0]*comboShape[0],
-                       gridShape[1]*comboShape[1]), dtype='uint8')
-
-    # print(comboGrid)
-    for i, row in enumerate(comboGrid.grid):
-        startY = i * comboShape[0]
-        endY = (i + 1) * comboShape[0]
-        for j, combo in enumerate(row):
-            startX = j * comboShape[1]
-            endX = (j + 1) * comboShape[1]
-            if not combo in comboSet.byCombo:
-                TL = combo.TL or 1
-                TR = combo.TR or 1
-                BL = combo.BL or 1
-                BR = combo.BR or 1
-                combo = Combo(TL,TR,BL,BR)
-            mockup[startY:endY,startX:endX] = comboSet.byCombo[combo].img    
-
+def genMockup(comboGrid, generator, targetShape, targetPadding, crop=True):
+    mockupCopy = generator.mockupImg.copy()
+    gridCopy = generator.comboGrid.grid.copy()
+    generator.comboGrid.grid = comboGrid
+    print(generator.comboGrid)
+    for row in range(generator.rows-1):
+        for col in range(generator.cols-1):
+            startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
+            generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col)
+    # Save the new mockup, then put everything in generator back to normal
+    mockup = generator.mockupImg.copy()
+    generator.mockupImg = mockupCopy
+    generator.comboGrid.grid = gridCopy
     # Crop and resize mockup to match target image
-    if targetPadding > 0:
+    if targetPadding > 0 and crop:
         mockup = mockup[:-targetPadding, :]
         # print("cropped to", mockup.shape)
     # return mockup
     resized = cv2.resize(mockup, dsize=(targetShape[1],targetShape[0]), interpolation=cv2.INTER_AREA)
     # print("mockup has shape", resized.shape)
-    return resized
+    return resized if crop else mockup 
 
 
 

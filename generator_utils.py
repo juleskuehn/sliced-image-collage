@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 from skimage.measure import compare_ssim, compare_mse, compare_psnr
-from kword_utils import gammaCorrect
+# from kword_utils import gammaCorrect
 from math import ceil, sqrt
 
 # Functions related to the selection of characters

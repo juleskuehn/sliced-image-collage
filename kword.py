@@ -16,7 +16,7 @@ from combo import Combo, ComboSet
 from combo_grid import ComboGrid
 from char import Char, CharSet
 from generator import Generator
-from kword_utils import chop_charset, resizeTarget
+from kword_utils import chop_charset, resizeTarget, genMockup
 
 args = sys.argv
 
@@ -26,16 +26,16 @@ args = sys.argv
 # slicesY = 2
 # xPad = 0
 # yPad = 0
-sourceFn = 'sc-3tone.png'
-slicesX = 50
-slicesY = 34
-xPad = 0
-yPad = 0
-# sourceFn = 'hermes-darker.png'
-# slicesX = 79
-# slicesY = 7
-# xPad = 4
-# yPad = 4
+# sourceFn = 'sc-3tone.png'
+# slicesX = 50
+# slicesY = 34
+# xPad = 0
+# yPad = 0
+sourceFn = 'hermes-darker.png'
+slicesX = 79
+slicesY = 7
+xPad = 4
+yPad = 4
 targetFn = args[1]
 rowLength = int(args[2])
 c = 1
@@ -106,7 +106,7 @@ generator.generateLayers(compareMode=mode, numAdjustPasses=numAdjust, gamma=gamm
                         randomOrder=randomOrder)
 # THIS IS THE LINE THAT MATTERS
 
-
+print(generator.comboGrid)
 
 ###################
 # Save mockup image
@@ -117,6 +117,14 @@ if targetPadding > 0: # Crop and resize mockup to match target image
 
 resized = cv2.resize(mockupImg, dsize=(targetImg.shape[1],targetImg.shape[0]), interpolation=cv2.INTER_AREA)
 cv2.imwrite(mockupFn+'.png', resized)
+
+#############
+# Save layers
+print("saving layers")
+layerNames = ['BR', 'BL', 'TR', 'TL']
+for i, layer in enumerate(generator.comboGrid.getLayers()):
+    layerImg = genMockup(layer, generator, targetImg.shape, targetPadding, crop=False)
+    cv2.imwrite(mockupFn+'layer'+layerNames[i]+'.png', layerImg)
 
 ############################
 # Calculate scores on result

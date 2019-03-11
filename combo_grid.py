@@ -83,6 +83,33 @@ class ComboGrid:
         return self.grid[row, col]
 
     
+    def getLayers(self):
+        layers = []
+        origGrid = self.grid.copy()
+        for i in range(4):
+            skipEvenRow = True
+            skipEvenCol = True
+            if i == 1:
+                skipEvenCol = False
+            elif i == 2:
+                skipEvenRow = False
+            elif i == 3:
+                skipEvenCol = False
+                skipEvenRow = False
+            self.grid = np.array([[[1,1,1,1]
+                                for _ in range(self.cols)]
+                                for _ in range(self.rows)], dtype=object)
+            for j, row in enumerate(origGrid[:,:,3]):
+                if (j % 2 == 0 and skipEvenRow) or (j % 2 != 0 and not skipEvenRow):
+                    continue
+                for k, char in enumerate(row):
+                    if (k % 2 == 0 and skipEvenCol) or (k % 2 != 0 and not skipEvenCol):
+                        continue
+                    if j < self.rows-1 and k < self.cols-1:
+                        self.put(j, k, char)
+            layers.append(self.grid.copy())
+        return layers
+    
 
     def __str__(self):
         s = '   '
