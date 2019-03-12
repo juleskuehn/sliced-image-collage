@@ -68,6 +68,12 @@ class Generator:
         self.psnrHistory = []
 
 
+    def buildAnn(self):
+        self.euclideanAnn = None
+        self.angularAnn = None
+        return
+
+
     def getTemp(self):
         return max(self.minTemp, self.initTemp - self.stats['positionsVisited']/(self.rows*self.cols*1000))
 

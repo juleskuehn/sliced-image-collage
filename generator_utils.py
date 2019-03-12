@@ -16,6 +16,18 @@ def getSliceBounds(generator, row, col, shrunken=False):
     return startX, startY, endX, endY
 
 
+# Comparison with ANN is simple, so all code built into this function
+# vs. putBetter which calls getBestOfRandomK() which calls compare()
+def putAnn(generator, row, col, mode='blend'):
+    startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
+    targetSlice = generator.targetImg[startY:endY, startX:endX]
+    if mode in ['angular', 'blend']:
+        return
+    if mode in ['euclidean', 'blend']:
+        return
+    if mode == 'blend':
+        return
+
 def putBetter(generator, row, col, k):
     generator.stats['positionsVisited'] += 1
     k = min(len(generator.charSet.getAll()) - 5, k*generator.boostK)
