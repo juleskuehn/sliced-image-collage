@@ -100,9 +100,12 @@ generator = Generator(resizedTarget, shrunkenTarget, charSet, targetShape=target
 if resume is not None:
     generator.load_state(resume)
 
+# Build angular and euclidean ANN models
+generator.buildAnn()
+
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareMode=mode, numAdjustPasses=numAdjust, gamma=gamma, 
-                        show=show, mockupFn=mockupFn, randomInit=randomInit,
+                        show=show, mockupFn=mockupFn, init='euclidean',
                         randomOrder=randomOrder)
 # THIS IS THE LINE THAT MATTERS
 

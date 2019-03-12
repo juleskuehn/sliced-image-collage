@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from skimage.measure import compare_ssim, compare_mse
 import pickle
+from annoy import AnnoyIndex
 
 from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
 from kword_utils import genMockup, gammaCorrect
-from generator_utils import putBetter, initRandomPositions, putSimAnneal, evaluateMockup
+from generator_utils import putBetter, initRandomPositions, putSimAnneal, evaluateMockup, initAnn
 
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
@@ -68,10 +69,22 @@ class Generator:
         self.psnrHistory = []
 
 
-    def buildAnn(self):
-        self.euclideanAnn = None
-        self.angularAnn = None
-        return
+    def buildAnn(self, trees=10):
+        dim = self.comboH * 2 * self.comboW * 2
+
+        charset = AnnoyIndex(dim, 'angular')
+        for i, char in enumerate(self.charSet.getAll()):
+            charset.add_item(i, np.ndarray.flatten(char.cropped))
+        charset.build(trees)
+        charset.save('angular.ann')
+        self.angularAnn = charset
+
+        charset = AnnoyIndex(dim, 'euclidean')
+        for i, char in enumerate(self.charSet.getAll()):
+            charset.add_item(i, np.ndarray.flatten(char.cropped))
+        charset.build(trees)
+        charset.save('euclidean.ann')
+        self.euclideanAnn = charset
 
 
     def getTemp(self):
@@ -90,7 +103,7 @@ class Generator:
 
     def generateLayers(self, compareMode='mse', numAdjustPasses=0,
                         show=True, mockupFn='mp_untitled', gamma=1,
-                        randomInit=False, randomOrder=False):
+                        init='blank', randomOrder=False):
 
         def dirtyLinearPositions(randomOrder=False, zigzag=True):
             positions = []
@@ -140,8 +153,11 @@ class Generator:
         self.positions = dirtyLinearPositions(randomOrder=randomOrder)
         # self.positions = []
 
-        if randomInit:
+        if init == 'random':
             initRandomPositions(self)
+        
+        elif init in ['angular', 'euclidean', 'blend']:
+            initAnn(self, mode=init)
 
         fig, ax = setupFig()
         # self.adjustPass = 0

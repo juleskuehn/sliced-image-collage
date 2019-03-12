@@ -18,15 +18,25 @@ def getSliceBounds(generator, row, col, shrunken=False):
 
 # Comparison with ANN is simple, so all code built into this function
 # vs. putBetter which calls getBestOfRandomK() which calls compare()
+# IDs returned by ANN will be 1 less than ID of char (start at 0 vs start at 1)
+# TODO blend mode
 def putAnn(generator, row, col, mode='blend'):
     startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
     targetSlice = generator.targetImg[startY:endY, startX:endX]
+    numChars = len(generator.charSet.getAll())
+    best = None
     if mode in ['angular', 'blend']:
-        return
+        angularScores = generator.angularAnn.get_nns_by_vector(
+                                np.ndarray.flatten(targetSlice), numChars)
+        best = angularScores[0] + 1
     if mode in ['euclidean', 'blend']:
-        return
-    if mode == 'blend':
-        return
+        euclideanScores = generator.euclideanAnn.get_nns_by_vector(
+                                np.ndarray.flatten(targetSlice), numChars)
+        best = euclideanScores[0] + 1
+    if best != None:
+        generator.comboGrid.put(row, col, best, chosen=True)
+        generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=False)
+
 
 def putBetter(generator, row, col, k):
     generator.stats['positionsVisited'] += 1
@@ -106,6 +116,14 @@ def initRandomPositions(generator):
         startX, startY, endX, endY = getSliceBounds(generator, row, col)
         generator.comboGrid.put(row, col, np.random.randint(1, numChars+1))
         generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col)
+
+def initAnn(generator, mode='angular'):
+    while len(generator.positions) > 0:
+        pos = generator.positions.pop(0)
+        if pos is None:
+            continue
+        row, col = pos
+        putAnn(generator, row, col, mode=mode)
 
 
 def compare(generator, row, col, ditherImg=None):
