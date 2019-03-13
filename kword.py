@@ -21,21 +21,25 @@ from kword_utils import chop_charset, resizeTarget, genMockup
 args = sys.argv
 
 # Hardcoding the charset params for convenience
+
 # sourceFn = 'marker-shapes.png'
 # slicesX = 12
 # slicesY = 2
 # xPad = 0
 # yPad = 0
-# sourceFn = 'sc-3tone.png'
-# slicesX = 50
-# slicesY = 34
-# xPad = 0
-# yPad = 0
-sourceFn = 'hermes-darker.png'
-slicesX = 79
-slicesY = 7
-xPad = 4
-yPad = 4
+
+sourceFn = 'sc-3tone.png'
+slicesX = 50
+slicesY = 34
+xPad = 0
+yPad = 0
+
+# sourceFn = 'hermes-darker.png'
+# slicesX = 79
+# slicesY = 7
+# xPad = 4
+# yPad = 4
+
 targetFn = args[1]
 rowLength = int(args[2])
 c = 1
@@ -105,7 +109,7 @@ generator.buildAnn()
 
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareMode=mode, numAdjustPasses=numAdjust, gamma=gamma, 
-                        show=show, mockupFn=mockupFn, init='euclidean',
+                        show=show, mockupFn=mockupFn, init='blend',
                         randomOrder=randomOrder)
 # THIS IS THE LINE THAT MATTERS
 

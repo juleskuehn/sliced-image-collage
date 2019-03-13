@@ -27,12 +27,25 @@ def putAnn(generator, row, col, mode='blend'):
     best = None
     if mode in ['angular', 'blend']:
         angularScores = generator.angularAnn.get_nns_by_vector(
-                                np.ndarray.flatten(targetSlice), numChars)
-        best = angularScores[0] + 1
+                                np.ndarray.flatten(targetSlice), numChars, include_distances=True)
     if mode in ['euclidean', 'blend']:
         euclideanScores = generator.euclideanAnn.get_nns_by_vector(
-                                np.ndarray.flatten(targetSlice), numChars)
-        best = euclideanScores[0] + 1
+                                np.ndarray.flatten(targetSlice), numChars, include_distances=True)
+    if mode == 'angular':
+        best = angularScores[0][0] + 1
+    elif mode == 'euclidean':
+        best = euclideanScores[0][0] + 1
+    elif mode == 'blend':
+        angularScores1 = [score/max(angularScores[1]) for score in angularScores[1]]
+        euclideanScores1 = [score/max(euclideanScores[1]) for score in euclideanScores[1]]
+        d = {}
+        for i, id in enumerate(angularScores[0]):
+            d[id] = angularScores1[i]
+        for i, id in enumerate(euclideanScores[0]):
+            # TODO expose hyperparam
+            boostEucl = 1
+            d[id] += euclideanScores1[i] * boostEucl
+        best = min(d, key=lambda k: d[k]) + 1
     if best != None:
         generator.comboGrid.put(row, col, best, chosen=True)
         generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=False)
@@ -117,7 +130,7 @@ def initRandomPositions(generator):
         generator.comboGrid.put(row, col, np.random.randint(1, numChars+1))
         generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col)
 
-def initAnn(generator, mode='angular'):
+def initAnn(generator, mode='blend'):
     while len(generator.positions) > 0:
         pos = generator.positions.pop(0)
         if pos is None:
