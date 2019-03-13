@@ -1225,3 +1225,57 @@ Plans:
  - "elementary move" is to go to the next best one
 
 - Use shrink on any pass, not just dither
+
+
+2019-03-13
+
+Final improvements!
+- Expose all hyperparameters in the CLI
+ --layers [list of layers to load, 'new' for new]
+ --uselayer [layername, implied to be 'new']
+ --initmode [one of 'blank', 'random', 'blend 0.5', 'angular', 'euclidean']
+ --opmode [one of 'mse', 'ssim', 'blend 0.5']
+ --select [one of 'best', 'simanneal', 'bestk 5']
+ --order [one of 'random', 'linear 1324', 'zigzag 1432', 'randomzag']
+ --initbrighten [128 would lighten by 50%]
+ --opbrighten [128]
+ --initgamma [0.8]
+ --opgamma [0.8]
+ --charset [filename.png]
+ --charrows [30]
+ --charcols [30]
+ --charmax [0.95 (the maximum % brightness to consider "not blank")]
+ --charpad [4]
+ --charshrink [3]
+ --target [filename.png]
+ ?--targetoffset [3 5 1 10 (pixels to crop from top, right, bottom, left respectively)]
+ ?--targetzoom [1.2]
+ --rowlength [20 (required: number of chars wide)]
+ --dither [0.3] (implied to be 0, dither off if 0)
+ --outfile [filename]
+    This will create
+     - filename.kword (the pass file)
+     - filename.png (mockup)
+     - filename_TL.png, filename_TR.png, filename_BL.png, filename_BR.png
+    If not specified, default to datetime
+
+- Allow stopping, resuming optimization, plus adding layers
+ - cancelling procedure at any time (closing window) will initialize saving
+ - kword.py --layers pass_1 pass_2 --uselayer pass_1 --opmode mse
+ - kword.py --layers pass_1 new --init angular --opmode ssim --dither 0.3
+  - this would load pass_1 and pass_2, and resume optimizing pass_1 as mse
+
+- Character selection GUI ?
+ - NO. can do this in GIMP etc.
+
+- Lighten target during selection:
+ - during initialization (for euclidean, should be lighter)
+ - per selection layer? (if initialized - no need)
+ - overall (ex. to save room for additional passes)
+
+- FIX Output layers for second passes correctly
+- FIX Selection order always random?
+- FIX dither
+
+- Autocrop: Find good settings for targetoffset, targetzoom, rowlength
+ - should take a separate process

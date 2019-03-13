@@ -34,6 +34,12 @@ slicesY = 34
 xPad = 0
 yPad = 0
 
+# sourceFn = 'sc-1tone.png'
+# slicesX = 26
+# slicesY = 15
+# xPad = 0
+# yPad = 0
+
 # sourceFn = 'hermes-darker.png'
 # slicesX = 79
 # slicesY = 7

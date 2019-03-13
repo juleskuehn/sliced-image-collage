@@ -43,7 +43,7 @@ def putAnn(generator, row, col, mode='blend'):
             d[id] = angularScores1[i]
         for i, id in enumerate(euclideanScores[0]):
             # TODO expose hyperparam
-            boostEucl = 1
+            boostEucl = 2
             d[id] += euclideanScores1[i] * boostEucl
         best = min(d, key=lambda k: d[k]) + 1
     if best != None:
@@ -70,7 +70,9 @@ def putBetter(generator, row, col, k):
         # print("already good")
         changed = False
         # if not generator.dither:
-        generator.comboGrid.clean(row, col)
+        # Only clean if we have looked at *all* characters
+        if k >= len(generator.charSet.getAll()) - 5:
+            generator.comboGrid.clean(row, col)
     if generator.dither:
         generator.ditherImg = applyDither(generator, row, col)
     return changed
