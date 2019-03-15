@@ -12,7 +12,9 @@ from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
 from kword_utils import genMockup, gammaCorrect
-from generator_utils import putBetter, initRandomPositions, putSimAnneal, evaluateMockup, initAnn
+from generator_utils import putBetter, initRandomPositions, putSimAnneal, evaluateMockup, initAnn, putAnn, dirtyPriorityPositions, dirtyLinearPositions
+from position_queue import PositionQueue
+
 
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
@@ -67,6 +69,7 @@ class Generator:
         self.minTemp = 0.00000001
         self.tempHistory = []
         self.psnrHistory = []
+        self.queue = PositionQueue(self)
 
 
     def buildAnn(self, trees=10):
@@ -76,14 +79,14 @@ class Generator:
         for i, char in enumerate(self.charSet.getAll()):
             charset.add_item(i, np.ndarray.flatten(char.cropped))
         charset.build(trees)
-        charset.save('angular.ann')
+        # charset.save('angular.ann')
         self.angularAnn = charset
 
         charset = AnnoyIndex(dim, 'euclidean')
         for i, char in enumerate(self.charSet.getAll()):
             charset.add_item(i, np.ndarray.flatten(char.cropped))
         charset.build(trees)
-        charset.save('euclidean.ann')
+        # charset.save('euclidean.ann')
         self.euclideanAnn = charset
 
 
@@ -105,39 +108,6 @@ class Generator:
                         show=True, mockupFn='mp_untitled', gamma=1,
                         init='blank', randomOrder=False):
 
-        def dirtyLinearPositions(randomOrder=False, zigzag=True):
-            positions = []
-            for layerID in [0, 3, 1, 2]:
-                startIdx = len(positions)
-                # r2l = False if np.random.rand() < 0.5 else True
-                startRow = 0
-                startCol = 0
-                endRow = self.rows - 1
-                endCol = self.cols - 1
-                if layerID in [2, 3]:
-                    startRow = 1
-                    # r2l = True
-                if layerID in [1, 3]:
-                    startCol = 1
-                for row in range(startRow, endRow, 2):
-                    for col in range(startCol, endCol, 2):
-                        if self.dither and self.comboGrid.isDitherDirty(row, col):
-                            positions.append((row, col))
-                        elif self.comboGrid.isDirty(row,col):
-                        # if self.comboGrid.isDirty(row,col):
-                            positions.append((row, col))
-                        else:
-                            self.comboGrid.clean(row, col)
-                # if r2l and zigzag:
-                    # positions[startIdx:len(positions)] = positions[len(positions)-1:startIdx-1:-1]
-                if len(positions) > 0:
-                    positions.append(None)
-            if randomOrder:
-                np.random.shuffle(positions)
-            # print(positions)
-            # exit()
-            return positions
-
         def setupFig():
             fig, ax = plt.subplots(1, 1)
             return fig, ax
@@ -150,26 +120,28 @@ class Generator:
             self.dither = True
         else:
             self.dither = False
-        self.positions = dirtyLinearPositions(randomOrder=randomOrder)
+        self.positions = dirtyPriorityPositions(self, init)
         # self.positions = []
 
         if init == 'random':
             initRandomPositions(self)
         
         elif init in ['angular', 'euclidean', 'blend']:
-            initAnn(self, mode=init)
+            # TODO expose hyperparam
+            initAnn(self, mode=init, priority=True)
 
         fig, ax = setupFig()
         # self.adjustPass = 0
         printEvery = 100
 
+        # initK = 500
         initK = 10
 
         def animate(frame):
             if frame % printEvery == 0:
                 print(self.stats['positionsVisited'], 'positions visited')
                 print(self.stats['comparisonsMade'], 'comparisons made')
-                print(len(dirtyLinearPositions()), 'dirty positions remaining')
+                print(len(self.positions), 'dirty positions remaining')
                 print('Temperature: ', self.getTemp())
                 self.psnrHistory.append(evaluateMockup(self))
                 self.tempHistory.append(self.getTemp())
@@ -181,19 +153,20 @@ class Generator:
                 # self.comboGrid.printDirty()
                 # print(self.comboGrid)
                 # Clear at every new pass of 4:
-                self.ditherImg = self.shrunkenTargetImg.copy()
-                self.positions += dirtyLinearPositions(randomOrder==randomOrder)
+                # self.ditherImg = self.shrunkenTargetImg.copy()
+                self.positions = dirtyPriorityPositions(self, 'mse')
+                # self.positions = dirtyLinearPositions(self, randomOrder=False)
                 # print("dirty:", len(self.positions))
-                if len(self.positions) == 0:
-                    self.passNumber += 1
-                    # There were no more dirty positions: finished!
-                    print("Finished adjusting pass", self.passNumber, ", saving.")
-                    save_object({
-                        'mockupImg': self.mockupImg,
-                        'comboGrid': self.comboGrid,
-                        'passNumber': self.passNumber
-                        }, 'pass_'+str(self.passNumber))
-                    # self.comboGrid = ComboGrid(self.rows, self.cols)
+                # if len(self.positions) == 0:
+                #     self.passNumber += 1
+                #     # There were no more dirty positions: finished!
+                #     print("Finished adjusting pass", self.passNumber, ", saving.")
+                #     save_object({
+                #         'mockupImg': self.mockupImg,
+                #         'comboGrid': self.comboGrid,
+                #         'passNumber': self.passNumber
+                #         }, 'pass_'+str(self.passNumber))
+                #     # self.comboGrid = ComboGrid(self.rows, self.cols)
                     # self.fixedMockupImg = self.mockupImg.copy()
                     # self.dither = self.compareMode == 'dither'
                     # self.positions = dirtyLinearPositions(randomize=randomOrder)
@@ -209,6 +182,7 @@ class Generator:
             row, col = pos
             # if self.putBestAdj(row, col):
             if putBetter(self, row, col, initK) or frame==0:
+            # if putAnn(self, row, col, mode=init) or frame==0:
             # if putSimAnneal(self, row, col) or frame==0:
             # if self.putBetter(row, col, 1): # first random better
                 ax.clear()

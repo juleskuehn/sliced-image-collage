@@ -28,11 +28,23 @@ args = sys.argv
 # xPad = 0
 # yPad = 0
 
-sourceFn = 'sc-3tone.png'
-slicesX = 50
-slicesY = 34
+sourceFn = 'sc-3toneNew.png'
+slicesX = 45
+slicesY = 21
 xPad = 0
 yPad = 0
+
+# sourceFn = 'sc-3toneNew2.png'
+# slicesX = 45
+# slicesY = 25
+# xPad = 0
+# yPad = 0
+
+# sourceFn = 'sc-3tone.png'
+# slicesX = 50
+# slicesY = 34
+# xPad = 0
+# yPad = 0
 
 # sourceFn = 'sc-1tone.png'
 # slicesX = 26
@@ -119,7 +131,7 @@ generator.generateLayers(compareMode=mode, numAdjustPasses=numAdjust, gamma=gamm
                         randomOrder=randomOrder)
 # THIS IS THE LINE THAT MATTERS
 
-print(generator.comboGrid)
+# print(generator.comboGrid)
 
 ###################
 # Save mockup image

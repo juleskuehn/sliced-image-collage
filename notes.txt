@@ -1269,13 +1269,119 @@ Final improvements!
  - NO. can do this in GIMP etc.
 
 - Lighten target during selection:
- - during initialization (for euclidean, should be lighter)
- - per selection layer? (if initialized - no need)
- - overall (ex. to save room for additional passes)
+ - DONE during initialization (for euclidean, should be lighter)
+ - NO per selection layer? (if initialized - no need)
+ - TODO overall (ex. to save room for additional passes)
 
 - FIX Output layers for second passes correctly
-- FIX Selection order always random?
+- DONE Selection order always random?
 - FIX dither
 
 - Autocrop: Find good settings for targetoffset, targetzoom, rowlength
  - should take a separate process
+
+- DONE Optimize with ANN modes !!!
+ - DONE target slice is processed (ink already placed is subtracted)
+  - DONE need a new composite function (ie. "WhatsLeft" mode)
+   - DONE inverts target slice. composites already placed ink on top. inverts again.
+ - RESULT: optimizing doesn't work much better (if any) than initializing
+  - ASK: Why?
+ - DONE: Improve initializing in "WhatsLeft" mode by changing selection order:
+  - Do a first pass and get the top score for each position
+  - Take the top scoring ones first (use best score as priority)
+  - TODO Recalculate priority after ___ ?
+
+- !!! TODO Selection mode (variant of MSE) that penalizes "too dark" more than "too light"
+
+- DONE python score.py targetImg.png mockupImg.png 100
+ - prints SSIM, MSE, and SSIM/MSE on shrunken (to fixed size ex. 100px) versions
+
+- Different SimAnneal where we pick the j'th best with probability decreasing with increasing j
+ - ie. most likely to select the best, but possible (barely) to select the worst
+ - can simply normalize the scores so they sum to 1 and use those probabilities?
+ - or base the distribution on weight
+
+- TODO Position Queue (using whatever comparison mode)
+
+
+RESULTS:
+- better selection order: most possibility for improvement (according to ann selector)
+- Scores after 1 min:
+ - most improved: 12.54
+ - worst first: 12.54
+ - random: 12.49
+ - linear: 12.63
+ - zigzag: 12.63
+- Scores at convergence (with fullK, initEuclideanPriority)
+mse_initEuclidean.png
+PSNR: 13.627125027334007
+SSIM: 0.1316979769400356
+
+mse_initEuclidean_simAnneal.png
+PSNR: 13.653429603988254
+SSIM: 0.13053386963226393
+
+mse_initEuclideanPriority_linear_fullK.png
+PSNR: 13.571422957022651
+SSIM: 0.125707884326702
+
+mse_initEuclideanPriority_mostImproved_k10.png
+PSNR: 13.5633435826588
+SSIM: 0.12960254255197265
+
+mse_initEuclideanPriority_mostImproved_k500.png
+PSNR: 13.58180954305675
+SSIM: 0.1302913488365344
+
+mse_initEuclideanPriority_truImprovementMse_k10.png
+PSNR: 13.628125920004138
+SSIM: 0.12730903091486723
+
+mse_initEuclideanPriority_worstFirst_k10.png
+PSNR: 13.605587762192526
+SSIM: 0.12890941694395003
+
+mse_initBlank.png
+PSNR: 13.598728440885527
+SSIM: 0.1284606484621753
+
+mse_initRandom.png
+PSNR: 13.582371169918094
+SSIM: 0.12911624136458513
+
+mse_initBlendLighten0.1 (2).png'
+PSNR: 13.664469474088975
+SSIM: 0.12636211366835165
+
+initBlendPriority_truImprovementMse_k10.png
+PSNR: 13.6876154049215
+SSIM: 0.1292550901974881
+
+initBlendPriority
+PSNR: 12.73
+!!!! Best init mode: score = angularScore + 2*euclideanScore
+
+initBlendLighten0.1.png
+PSNR: 12.26659358601308
+SSIM: 0.12187543283931433
+
+initEuclidean.png
+PSNR: 9.619036152112411
+SSIM: 0.07995799952920465
+
+initEuclideanMinus.png
+PSNR: 12.186264645875017
+SSIM: 0.10100123661107431
+
+initEuclideanPriority.png
+PSNR: 11.626531617636736
+SSIM: 0.09825178647469442
+
+initEuclideanPriority0.2.png
+PSNR: 12.797831140143654
+SSIM: 0.1037024870365485
+
+initEuclideanPriority0.35
+PSNR: 13
+# This had bad results during optimization
+# (due to a "washed out" initialization)
