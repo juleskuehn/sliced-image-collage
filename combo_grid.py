@@ -15,6 +15,20 @@ class ComboGrid:
                                 # Order of self.dirty is TL, TR, BL, BR
         self.maxFlips = 2
         self.initDirty()
+        self.initChanged()
+
+
+    def initChanged(self):
+        self.changed = np.array([[[0,0,0,0]
+                                for _ in range(self.cols)]
+                                for _ in range(self.rows)], dtype=np.bool)
+        # Space character on edges never changes, so clear dirty bit
+        self.changed[0,:,:2] = 0
+        self.changed[-1,:,2:] = 0
+        self.changed[:,0,0] = 0
+        self.changed[:,0,2] = 0
+        self.changed[:,-1,1] = 0
+        self.changed[:,-1,3] = 0
 
 
     def initDirty(self):
@@ -50,6 +64,7 @@ class ComboGrid:
             self.flips[row, col] += 1
             # print(self.flips[row, col])
         self.setDirty(row, col)
+        self.setChanged(row, col)
 
 
     def setDirty(self, row, col, isDirty=True):
@@ -65,6 +80,20 @@ class ComboGrid:
         # print(row, col, 'is', dirty)
         # return dirty and self.flips[row, col] <= self.maxFlips
         return dirty
+
+    def setChanged(self, row, col, isChanged=True):
+        # Set dirty bits
+        self.changed[row, col, 3] = isChanged
+        self.changed[row+1, col, 1] = isChanged
+        self.changed[row, col+1, 2] = isChanged
+        self.changed[row+1, col+1, 0] = isChanged
+
+    
+    def isChanged(self, row, col):
+        changed = np.sum([1 for bit in self.changed[row:row+2, col:col+2].flatten() if bit]) > 0
+        # print(row, col, 'is', dirty)
+        # return dirty and self.flips[row, col] <= self.maxFlips
+        return changed
 
     def isDitherDirty(self, row, col):
         dirty = np.sum([1 for bit in self.dirty[

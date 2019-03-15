@@ -12,8 +12,8 @@ from combo import ComboSet, Combo
 from combo_grid import ComboGrid
 from char import Char
 from kword_utils import genMockup, gammaCorrect
-from generator_utils import putBetter, initRandomPositions, putSimAnneal, evaluateMockup, initAnn, putAnn, dirtyPriorityPositions, dirtyLinearPositions
-from position_queue import PositionQueue
+from generator_utils import putBetter, initRandomPositions, putSimAnneal, evaluateMockup, initAnn, putAnn, dirtyPriorityPositions, dirtyLinearPositions, putThis
+from position_queue2 import PositionQueue
 
 
 def save_object(obj, filename):
@@ -69,7 +69,7 @@ class Generator:
         self.minTemp = 0.00000001
         self.tempHistory = []
         self.psnrHistory = []
-        self.queue = PositionQueue(self)
+        self.positions = []
 
 
     def buildAnn(self, trees=10):
@@ -120,10 +120,14 @@ class Generator:
             self.dither = True
         else:
             self.dither = False
-        self.positions = dirtyPriorityPositions(self, init)
+        # self.positions = dirtyPriorityPositions(self, init)
         # self.positions = []
 
         if init == 'random':
+            for row in range(self.rows - 1):
+                for col in range(self.cols - 1):
+                    position = (row, col)
+                    self.positions.append(position)
             initRandomPositions(self)
         
         elif init in ['angular', 'euclidean', 'blend']:
@@ -135,26 +139,28 @@ class Generator:
         printEvery = 100
 
         # initK = 500
-        initK = 10
+        initK = 5
+
+        self.queue = PositionQueue(self)
 
         def animate(frame):
             if frame % printEvery == 0:
                 print(self.stats['positionsVisited'], 'positions visited')
                 print(self.stats['comparisonsMade'], 'comparisons made')
-                print(len(self.positions), 'dirty positions remaining')
+                print(len(self.queue.queue), 'dirty positions remaining')
                 print('Temperature: ', self.getTemp())
                 self.psnrHistory.append(evaluateMockup(self))
                 self.tempHistory.append(self.getTemp())
                 print('---')
-            if len(self.positions) == 0:
-                print("Finished pass")
-                self.boostK *= 2
-                print("k =", initK * self.boostK)
+            # if len(self.positions) == 0:
+                # print("Finished pass")
+                self.boostK += 5
+                print("k =", min(len(self.charSet.getAll()), initK + self.boostK))
                 # self.comboGrid.printDirty()
                 # print(self.comboGrid)
                 # Clear at every new pass of 4:
                 # self.ditherImg = self.shrunkenTargetImg.copy()
-                self.positions = dirtyPriorityPositions(self, 'mse')
+                # self.positions = dirtyPriorityPositions(self, 'mse')
                 # self.positions = dirtyLinearPositions(self, randomOrder=False)
                 # print("dirty:", len(self.positions))
                 # if len(self.positions) == 0:
@@ -173,18 +179,13 @@ class Generator:
                     # # Need to reset combos because running out of memory?
                     # self.comboSet = ComboSet()
 
-            pos = self.positions.pop(0)
-            if pos is None:
-                # Clear at every new overlap layer:
-                # This doesn't work if randomly ordered
-                # self.ditherImg = self.shrunkenTargetImg.copy()
-                return
+            pos, bestId = self.queue.remove()
             row, col = pos
             # if self.putBestAdj(row, col):
-            if putBetter(self, row, col, initK) or frame==0:
+            if putThis(self, row, col, bestId) or frame==0:
             # if putAnn(self, row, col, mode=init) or frame==0:
             # if putSimAnneal(self, row, col) or frame==0:
-            # if self.putBetter(row, col, 1): # first random better
+            # if putBetter(self, row, col, initK): # first random better
                 ax.clear()
                 ax.imshow(self.mockupImg, cmap='gray')
             # ax[1].clear()

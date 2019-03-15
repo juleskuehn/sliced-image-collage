@@ -20,7 +20,6 @@ def getSliceBounds(generator, row, col, shrunken=False):
 # Comparison with ANN is simple, so all code built into this function
 # vs. putBetter which calls getBestOfRandomK() which calls compare()
 # IDs returned by ANN will be 1 less than ID of char (start at 0 vs start at 1)
-# TODO blend mode
 def putAnn(generator, row, col, mode='blend', put=True):
     generator.stats['positionsVisited'] += 1
     startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
@@ -59,6 +58,7 @@ def putAnn(generator, row, col, mode='blend', put=True):
             # TODO expose hyperparam
             boostEucl = 2
             d[id] += angularScores1[i] / boostEucl
+            # d[id] *= (1 + angularScores1[i])
         best = min(d, key=lambda k: d[k]) + 1
         if best in d:
             bestScore = d[best]
@@ -69,7 +69,7 @@ def putAnn(generator, row, col, mode='blend', put=True):
         generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=False)
     else:
         generator.comboGrid.put(row, col, origBest, chosen=True)
-        generator.comboGrid.clean(row, col)
+        # generator.comboGrid.clean(row, col)
     return bestScore
 
 
@@ -112,6 +112,7 @@ def scoreAnn(generator, row, col, mode='blend'):
             # TODO expose hyperparam
             boostEucl = 2
             d[id] += angularScores1[i] / boostEucl
+            # d[id] *= (1 + angularScores1[i])
         best = min(d, key=lambda k: d[k]) + 1
         if best in d:
             bestScore = d[best]
@@ -124,7 +125,7 @@ def scoreAnn(generator, row, col, mode='blend'):
 
 def putBetter(generator, row, col, k):
     generator.stats['positionsVisited'] += 1
-    k = min(len(generator.charSet.getAll()) - 5, k*generator.boostK)
+    k = min(len(generator.charSet.getAll()) - 5, k + generator.boostK)
     bestMatch = getBestOfRandomK(generator, row, col, k)
     # bestMatch = getNextBetter(generator, row, col, mode='sorted')
     if bestMatch:
@@ -142,11 +143,26 @@ def putBetter(generator, row, col, k):
         changed = False
         # if not generator.dither:
         # Only clean if we have looked at *all* characters
-        if k >= len(generator.charSet.getAll()) - 5:
-            generator.comboGrid.clean(row, col)
+        # if k >= len(generator.charSet.getAll()) - 5:
+        #     generator.comboGrid.clean(row, col)
     if generator.dither:
         generator.ditherImg = applyDither(generator, row, col)
+    generator.queue.add((row, col))
     return changed
+
+
+# Priority queue method
+def putThis(generator, row, col, id):
+    # changed = id != generator.comboGrid.get(row, col)[3]
+    # if changed:
+    generator.comboGrid.put(row, col, id, chosen=True)
+    startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
+    if row < generator.mockupRows-1 and col < generator.mockupCols-1:
+        generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=False)
+    # else:
+    #     generator.comboGrid.clean(row, col)
+    generator.queue.add((row, col))
+    return True
 
 
 def putSimAnneal(generator, row, col):
@@ -165,8 +181,8 @@ def putSimAnneal(generator, row, col):
         # print("already good")
         changed = False
         # Don't clean with simulated annealing unless temperature == 0
-        if generator.getTemp() <= generator.minTemp*1.5:
-            generator.comboGrid.clean(row, col)
+        # if generator.getTemp() <= generator.minTemp*1.5:
+        #     generator.comboGrid.clean(row, col)
     return changed
 
 
@@ -188,6 +204,7 @@ def getSimAnneal(generator, row, col):
             newChar = char.id
             break
     generator.comboGrid.grid = origGrid
+    generator.queue.add((row, col))
     return newChar
 
 
@@ -270,7 +287,7 @@ def initRandomPositions(generator):
 
 def initAnn(generator, mode='blend', priority=False):
     # if priority:
-    #     generator.positions = dirtyPriorityPositions(generator, mode)
+    generator.positions = dirtyPriorityPositions(generator, mode)
     while len(generator.positions) > 0:
         pos = generator.positions.pop(0)
         if pos is None:

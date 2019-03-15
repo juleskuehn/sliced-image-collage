@@ -127,7 +127,7 @@ generator.buildAnn()
 
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareMode=mode, numAdjustPasses=numAdjust, gamma=gamma, 
-                        show=show, mockupFn=mockupFn, init='blend',
+                        show=show, mockupFn=mockupFn, init='euclidean',
                         randomOrder=randomOrder)
 # THIS IS THE LINE THAT MATTERS
 
@@ -145,11 +145,11 @@ cv2.imwrite(mockupFn+'.png', resized)
 
 #############
 # Save layers
-print("saving layers")
-layerNames = ['BR', 'BL', 'TR', 'TL']
-for i, layer in enumerate(generator.comboGrid.getLayers()):
-    layerImg = genMockup(layer, generator, targetImg.shape, targetPadding, crop=False)
-    cv2.imwrite(mockupFn+'layer'+layerNames[i]+'.png', layerImg)
+# print("saving layers")
+# layerNames = ['BR', 'BL', 'TR', 'TL']
+# for i, layer in enumerate(generator.comboGrid.getLayers()):
+#     layerImg = genMockup(layer, generator, targetImg.shape, targetPadding, crop=False)
+#     cv2.imwrite(mockupFn+'layer'+layerNames[i]+'.png', layerImg)
 
 ############################
 # Calculate scores on result

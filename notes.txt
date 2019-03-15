@@ -1227,7 +1227,7 @@ Plans:
 - Use shrink on any pass, not just dither
 
 
-2019-03-13
+2019-03-13 to 2019-03-14
 
 Final improvements!
 - Expose all hyperparameters in the CLI
@@ -1354,7 +1354,7 @@ PSNR: 13.664469474088975
 SSIM: 0.12636211366835165
 
 initBlendPriority_truImprovementMse_k10.png
-PSNR: 13.6876154049215
+PSNR: 13.6876154049215F
 SSIM: 0.1292550901974881
 
 initBlendPriority
@@ -1385,3 +1385,33 @@ initEuclideanPriority0.35
 PSNR: 13
 # This had bad results during optimization
 # (due to a "washed out" initialization)
+
+
+
+2019-03-15
+
+TODO:
+- Update scoring, note some conclusions
+ - DONE score_dir.py (not recursive)
+
+- If Priority Queue is worthwhile,
+ - Make its operation bulletproof
+
+- "Not too dark" selection mode (MSE variant)
+
+- Stopping/resuming
+- FIX Output layers for second passes correctly
+- Lighten target: Gamma
+
+(if time) exposing hyperparams to CLI
+
+RESULTS:
+- Best init: whatsLeft=True, mode=euclidean, no lightening
+ - random init gives best SSIM
+ - blend is sometimes better than euclidean
+ - blank does not measure well, but is interesting subjectively
+- Best select order: priority, random
+ - priority fastest to converge, by far
+- Best select mode: mse
+- Best select algo: simAnneal, increasingK, pure greed
+

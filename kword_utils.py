@@ -58,7 +58,7 @@ def genMockup(comboGrid, generator, targetShape, targetPadding, crop=True):
     mockupCopy = generator.mockupImg.copy()
     gridCopy = generator.comboGrid.grid.copy()
     generator.comboGrid.grid = comboGrid
-    print(generator.comboGrid)
+    # print(generator.comboGrid)
     for row in range(generator.rows-1):
         for col in range(generator.cols-1):
             startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
