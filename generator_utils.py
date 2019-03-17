@@ -147,7 +147,7 @@ def putBetter(generator, row, col, k):
         #     generator.comboGrid.clean(row, col)
     if generator.dither:
         generator.ditherImg = applyDither(generator, row, col)
-    generator.queue.add((row, col))
+    # generator.queue.add((row, col))
     return changed
 
 
@@ -155,13 +155,15 @@ def putBetter(generator, row, col, k):
 def putThis(generator, row, col, id):
     # changed = id != generator.comboGrid.get(row, col)[3]
     # if changed:
+    if generator.comboGrid.get(row, col)[3] == id:
+        return False
     generator.comboGrid.put(row, col, id, chosen=True)
     startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
     if row < generator.mockupRows-1 and col < generator.mockupCols-1:
         generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=False)
     # else:
     #     generator.comboGrid.clean(row, col)
-    generator.queue.add((row, col))
+    # generator.queue.add((row, col))
     return True
 
 
@@ -204,7 +206,7 @@ def getSimAnneal(generator, row, col):
             newChar = char.id
             break
     generator.comboGrid.grid = origGrid
-    generator.queue.add((row, col))
+    # generator.queue.add((row, col))
     return newChar
 
 
@@ -358,8 +360,14 @@ def getNextBetter(generator, row, col, mode='sorted'):
     return betterChoice
 
 
-def scoreMse(generator, row, col, k=5, binned=False):
-    chars = generator.charSet.getAll()
+def scoreMse(generator, row, col, k=0, b=3, binned=False):
+    if k > 0:
+        k = min(len(generator.charSet.getAll()) - b, k + generator.boostK)
+        chars = generator.charSet.getSorted()[b:] # all but brightest b
+        chars = list(np.random.choice(chars, k, replace=False)) # choose k
+        chars = chars + generator.charSet.getSorted()[:b] # add brightest b
+    else:
+        chars = generator.charSet.getAll()
     scores = {}
     origGrid = generator.comboGrid.grid.copy()
     for char in chars:

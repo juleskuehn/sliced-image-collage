@@ -127,7 +127,7 @@ generator.buildAnn()
 
 # THIS IS THE LINE THAT MATTERS
 generator.generateLayers(compareMode=mode, numAdjustPasses=numAdjust, gamma=gamma, 
-                        show=show, mockupFn=mockupFn, init='euclidean',
+                        show=show, mockupFn=mockupFn, init='blend',
                         randomOrder=randomOrder)
 # THIS IS THE LINE THAT MATTERS
 

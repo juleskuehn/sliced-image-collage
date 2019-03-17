@@ -151,6 +151,7 @@ class Generator:
                 print('Temperature: ', self.getTemp())
                 self.psnrHistory.append(evaluateMockup(self))
                 self.tempHistory.append(self.getTemp())
+                # self.queue.maxFlips += 5
                 print('---')
             # if len(self.positions) == 0:
                 # print("Finished pass")
@@ -186,6 +187,7 @@ class Generator:
             # if putAnn(self, row, col, mode=init) or frame==0:
             # if putSimAnneal(self, row, col) or frame==0:
             # if putBetter(self, row, col, initK): # first random better
+                self.queue.update(row, col)
                 ax.clear()
                 ax.imshow(self.mockupImg, cmap='gray')
             # ax[1].clear()
@@ -193,7 +195,7 @@ class Generator:
 
         # numFrames = (len(self.positions)-4)*(len(compareModes)+1+numAdjustPasses)
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=30, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
+        writer = Writer(fps=60, metadata=dict(artist='Jules Kuehn'), bitrate=1800)
         ani = animation.FuncAnimation(fig, animate, repeat=False, frames=1000000000, interval=1)
         if show:
             plt.show()

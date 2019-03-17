@@ -1395,7 +1395,7 @@ TODO:
  - DONE score_dir.py (not recursive)
 
 - If Priority Queue is worthwhile,
- - Make its operation bulletproof
+ - DONE Make its operation bulletproof
 
 - "Not too dark" selection mode (MSE variant)
 
@@ -1415,3 +1415,8 @@ RESULTS:
 - Best select mode: mse
 - Best select algo: simAnneal, increasingK, pure greed
 
+- Perfect priority Queue is prone to getting stuck in "loops"
+ - also very slow
+ - adding randomness prolongs the time before getting stuck
+ - maxFlips=50 works great
+ 
