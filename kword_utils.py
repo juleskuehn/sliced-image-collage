@@ -54,7 +54,7 @@ def gammaCorrect(img, gamma=1):
 
 
 # Returns a mockup image, with the same size as the target image
-def genMockup(comboGrid, generator, targetShape, targetPadding, crop=True):
+def genMockup(comboGrid, generator, targetShape, targetPadding, crop=True, addFixed=True):
     mockupCopy = generator.mockupImg.copy()
     gridCopy = generator.comboGrid.grid.copy()
     generator.comboGrid.grid = comboGrid
@@ -62,7 +62,7 @@ def genMockup(comboGrid, generator, targetShape, targetPadding, crop=True):
     for row in range(generator.rows-1):
         for col in range(generator.cols-1):
             startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
-            generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col)
+            generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, addFixed=addFixed)
     # Save the new mockup, then put everything in generator back to normal
     mockup = generator.mockupImg.copy()
     generator.mockupImg = mockupCopy

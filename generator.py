@@ -79,14 +79,25 @@ class Generator:
         for i, char in enumerate(self.charSet.getAll()):
             charset.add_item(i, np.ndarray.flatten(char.cropped))
         charset.build(trees)
-        # charset.save('angular.ann')
+        charset.save('angular.ann')
         self.angularAnn = charset
 
         charset = AnnoyIndex(dim, 'euclidean')
         for i, char in enumerate(self.charSet.getAll()):
             charset.add_item(i, np.ndarray.flatten(char.cropped))
         charset.build(trees)
-        # charset.save('euclidean.ann')
+        charset.save('euclidean.ann')
+        self.euclideanAnn = charset
+
+    def loadAnn(self):
+        dim = self.comboH * 2 * self.comboW * 2
+
+        charset = AnnoyIndex(dim, 'angular')
+        charset.load('angular.ann')
+        self.angularAnn = charset
+
+        charset = AnnoyIndex(dim, 'euclidean')
+        charset.load('euclidean.ann')
         self.euclideanAnn = charset
 
 
@@ -106,7 +117,7 @@ class Generator:
 
     def generateLayers(self, compareMode='mse', numAdjustPasses=0,
                         show=True, mockupFn='mp_untitled', gamma=1,
-                        init='blank', randomOrder=False):
+                        init='blank', initOnly=False):
 
         def setupFig():
             fig, ax = plt.subplots(1, 1)
@@ -133,6 +144,9 @@ class Generator:
         elif init in ['angular', 'euclidean', 'blend']:
             # TODO expose hyperparam
             initAnn(self, mode=init, priority=True)
+
+        if initOnly:
+            return
 
         fig, ax = setupFig()
         # self.adjustPass = 0
@@ -205,6 +219,11 @@ class Generator:
         print("Finished!")
         print(self.stats['positionsVisited'], 'positions visited')
         print(self.stats['comparisonsMade'], 'comparisons made')
+        save_object({
+            'mockupImg': self.mockupImg,
+            'comboGrid': self.comboGrid,
+            'passNumber': self.passNumber
+            }, 'pass_'+str(self.passNumber))
         
         # Prevent saving after initial error
         if self.stats['positionsVisited'] > 50:

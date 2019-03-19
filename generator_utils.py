@@ -163,7 +163,8 @@ def putThis(generator, row, col, id):
         generator.mockupImg[startY:endY, startX:endX] = compositeAdj(generator, row, col, shrunken=False)
     # else:
     #     generator.comboGrid.clean(row, col)
-    # generator.queue.add((row, col))
+    # if generator.queue.k > 0:
+    generator.queue.add((row, col))
     return True
 
 
@@ -310,6 +311,7 @@ def compare(generator, row, col, ditherImg=None):
     mockupSlice = compositeAdj(generator, row, col, shrunken=False)
     # avgErr = abs(np.average(targetSlice/generator.maxGamma - mockupSlice))
     score = 0
+    asymmetry = 0.1
     if generator.compareMode in ['ssim']:
         # targetSlice = gammaCorrect(targetSlice, generator.gamma)
         score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
@@ -323,20 +325,59 @@ def compare(generator, row, col, ditherImg=None):
         #     # ditherSlice = gammaCorrect(ditherSlice, generator.gamma)
         #     score *= np.sqrt(compare_mse(ditherSlice, shrunkenMockupSlice)) / 255
     elif generator.compareMode in ['blend']:
-        score = -1 * compare_ssim(targetSlice, mockupSlice) + 1
+        boostAmse = 2
+        ssim = -1 * compare_ssim(targetSlice, mockupSlice)
+        amse = boostAmse * np.sqrt(compare_amse(targetSlice, mockupSlice, asymmetry)) / 255
+        # print(ssim, amse)
         # print('ssim score:', score)
         # targetSlice = gammaCorrect(targetSlice, generator.gamma)
-        score *= np.sqrt(compare_mse(targetSlice, mockupSlice)) / 255
-    elif generator.compareMode in ['armse']:
-        # Asymmetric root mean squared error
-        # TODO Broken!
-        # targetSlice = gammaCorrect(targetSlice, generator.gamma)
-        offset = 0
-        score = np.sqrt(np.average(np.power(np.array(
-            targetSlice - mockupSlice + offset,
-            dtype='int16'), 2))) / 255
+        score = ssim + amse 
+    elif generator.compareMode in ['amse']:
+        # Asymmetric mean squared error
+        # Asymmetry, can be negative or positive float. Raises k powers.
+        score = compare_amse(targetSlice, mockupSlice, asymmetry)
+        
     # print(score)
     return score
+
+
+def compare_amse(im1, im2, asymmetry):
+    # Based on source of skimage compare_mse
+    # https://github.com/scikit-image/scikit-image/blob/master/skimage/measure/simple_metrics.py#L27
+    def _assert_compatible(im1, im2):
+        """Raise an error if the shape and dtype do not match."""
+        if not im1.shape == im2.shape:
+            raise ValueError('Input images must have the same dimensions.')
+        return
+
+    def _as_floats(im1, im2):
+        """Promote im1, im2 to nearest appropriate floating point precision."""
+        float_type = np.result_type(im1.dtype, im2.dtype, np.float32)
+        im1 = np.asarray(im1, dtype=float_type)
+        im2 = np.asarray(im2, dtype=float_type)
+        return im1, im2
+
+    _assert_compatible(im1, im2)
+    im1, im2 = _as_floats(im1, im2)
+    """     a:
+
+        [[0, 4, 4, 2],
+        [1, 3, 0, 2],
+        [3, 2, 4, 4]]
+        b:
+
+        [[6, 9, 8, 6],
+        [7, 7, 9, 6],
+        [8, 6, 5, 7]]
+        and, c:
+
+        [[0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]]
+    use the value of b (if the conditions of a and b are met) to calculate the value of c: """
+    diff = im1 - im2
+    result = (np.where(diff>0,diff*(1+asymmetry),diff))
+    return np.mean(np.square(result), dtype=np.float64)
 
 
 def getNextBetter(generator, row, col, mode='sorted'):
@@ -498,7 +539,7 @@ def applyDither(generator, row, col, amount=0.3, mode='li'):
 # Uses combos to store already composited "full" (all 4 layers)
 # If combo not already generated, add it to comboSet.
 # Returns mockupImg slice
-def compositeAdj(generator, row, col, shrunken=False, targetSlice=''):
+def compositeAdj(generator, row, col, shrunken=False, targetSlice='', addFixed=True):
     
     def getIndices(cDict):
         t = cDict[0], cDict[1], cDict[2], cDict[3]
@@ -534,6 +575,8 @@ def compositeAdj(generator, row, col, shrunken=False, targetSlice=''):
     # Stitch quadrants together
     startX, startY, endX, endY = getSliceBounds(generator, row, col, shrunken=False)
     img = generator.fixedMockupImg[startY:endY, startX:endX] / 255
+    if not addFixed:
+        img.fill(1)
     img[:img.shape[0]//2, :img.shape[1]//2] *= qs[0].img
     img[:img.shape[0]//2, img.shape[1]//2:] *= qs[1].img 
     img[img.shape[0]//2:, :img.shape[1]//2] *= qs[2].img
